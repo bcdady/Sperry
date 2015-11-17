@@ -7,9 +7,9 @@
     This is intended as a prototype for how to user PowerShell in a script, as a supporting component of a Module
 .EXAMPLE
     PS C:\> Get-SophosFW
-    Enumerate current state of Sophos Firewall (as an aggregate of all related Windows services)
+    Enumerate current state of Sophos firewall (as an aggregate of all related Windows services)
 .EXAMPLE
-    PS C:\> Set-SophosFW -ServiceAction Start
+    PS C:\> Set-SophosFW -ServiceStatus Running
     Starts all related Windows services, so that Sophos firewall is active
 .NOTES
     NAME        :  SophosFW.ps1
@@ -63,7 +63,7 @@ function Get-SophosFW {
     }
     Write-Log -Message "Get-SophosFW $ServiceStatus = $SophosFW " -Function SophosFW;
 
-    Show-Progress -Mode Stop -Action SophosFW; # Log stop timestamp
+    Show-Progress -Mode Stop -Action SophosFW; # Log stop time-stamp
 
     return $SophosFW;
 }
@@ -77,26 +77,26 @@ function Set-SophosFW {
             Position=0,
             ValueFromPipeline=$true,
             ValueFromPipelineByPropertyName=$true,
-            HelpMessage='Specify service state change action. Accepts Start or Stop.')
+            HelpMessage='Specify service state change action. Accepts Running or Stopped.')
          ]
         [alias('Action','State')]
-        [ValidateSet('Start', 'Stop')]
-        $ServiceAction
+        [ValidateSet('Running', 'Stopped')]
+        $ServiceStatus
     )
 
     $ErrorActionPreference = 'SilentlyContinue';
-    Show-Progress -Mode Start -Action SophosFW; # Log start timestamp
+    Show-Progress -Mode Start -Action SophosFW; # Log start time-stamp
     if (Test-LocalAdmin) {
 		# We already have elevated permissions; proceed with controlling services
-        switch ($ServiceAction) {
-            'Start' {
+        switch ($ServiceStatus) {
+            'Running' {
             	Write-Log -Message 'Confirmed elevated privileges; resuming Sophos services' -Function SophosFW -verbose;
 		        Get-Service Sophos* | start-Service;
 		        Get-Service Swi* | start-Service;
                 Start-Sleep -Seconds 1;
                 Get-SophosFW -ServiceStatus Running;
             }
-            'Stop' {
+            'Stopped' {
             	Write-Log -Message 'Confirmed elevated privileges; halting Sophos services' -Function SophosFW  -verbose;
 		        Get-Service Sophos* | stop-Service;
 		        Get-Service Swi* | stop-Service;
@@ -106,8 +106,8 @@ function Set-SophosFW {
         }        
 	} else {
         # Before we attempt to elevate permissions, check current services state 
-        switch ($ServiceAction) {
-            'Start' {
+        switch ($ServiceStatus) {
+            'Running' {
                 if ( Get-SophosFW -ServiceStatus Running ) {
                     Write-Log -Message 'Sophos firewall services confirmed running' -Function SophosFW -verbose;
                 } else {
@@ -122,11 +122,11 @@ function Set-SophosFW {
                     }
                 }
             }
-            'Stop' {
+            'Stopped' {
                 if (Get-SophosFW -ServiceStatus Stopped) {
                     Write-Log -Message 'Sophos firewall services confirmed stopped' -Function SophosFW -verbose;
                 } else {
-                    Write-Log -Message 'Need to elevate privileges for proper completion ... requesting admin credentials.' -Function SophosFW -Debug;
+                    Write-Log -Message 'Need to elevate privileges for proper completion ... requesting admin credentials.' -Function SophosFW;
                     Set-UAC;
                     start-process -FilePath "$PSHOME\powershell.exe" -ArgumentList '-NoProfile -Command "& {Stop-Service -Name Sophos*; Stop-Service -Name Swi*}"' -verb RunAs -Wait;
                     $ServiceStatus = $?
@@ -139,5 +139,5 @@ function Set-SophosFW {
             }
         }
 	}
-    Show-Progress -Mode Stop -Action SophosFW; # Log stop timestamp
+    Show-Progress -Mode Stop -Action SophosFW; # Log stop time-stamp
 }

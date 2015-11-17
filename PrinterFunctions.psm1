@@ -1,4 +1,5 @@
-﻿<#
+﻿#requires -Version 2 -Modules CimCmdlets, PSLogger
+<#
 .SYNOPSIS
     PrinterFunctions Module contains functions that help make it easier to interact with printer ports via WMI (for backward compatibility).
 .DESCRIPTION
@@ -8,7 +9,7 @@
 # *** RFE : Enumerate domain / directory published printers, with their address, subnet and/or vlan.
 
 # Define new global variable for default printer
-New-Variable -Name DefaultPrinter -Description 'Default Printer' -Scope Global
+New-Variable -Name DefaultPrinter -Description 'Default Printer' -Scope Global -ErrorAction Ignore
 
 function Get-Printer {
 <#
@@ -38,32 +39,46 @@ function Get-Printer {
         $Network
     )
     Show-Progress -msgAction Start -msgSource $PSCmdlet.MyInvocation.MyCommand.Name
-    [string]$CIMfilter;
+    [string]$Script:CIMfilter
 
-    if ($Default)     { $CIMfilter = "Default='True'"; }
-    elseif ($Local)   { $CIMfilter = "Local='True'"; } 
-    elseif ($Network) { $CIMfilter = "Network='True'"; } 
+    if ($Default)     
+    {
+        $Script:CIMfilter = "Default='True'"
+    }
+    elseif ($Local)   
+    {
+        $Script:CIMfilter = "Local='True'"
+    } 
+    elseif ($Network) 
+    {
+        $Script:CIMfilter = "Network='True'"
+    } 
 
     # else  $CIMfilter remains $null, so returns all results
 
-    $printerInfo = Get-CimInstance -ClassName Win32_Printer -Filter $CIMfilter | format-table -Property Name,ShareName,SystemName,Default,Local,Network -AutoSize
+    $Script:printerInfo = Get-CimInstance -ClassName Win32_Printer -Filter $CIMfilter | Format-Table -Property Name, ShareName, SystemName, Default, Local, Network -AutoSize
 
     # If default printer was retrieved, update 
-    if ($Default) { $DefaultPrinter = $printerInfo }
-
+    if ($Default) 
+    {
+        $Global:DefaultPrinter = $printerInfo 
+    }
+    
     Show-Progress -msgAction Stop -msgSource $PSCmdlet.MyInvocation.MyCommand.Name
+
+    return $printerInfo
 }
 
 <#
-Example of how to retrieve color capabilities, like Color, Duplex.
-Also shows DriverName and print server name
-Get-WmiObject -Class win32_printer -Filter "ShareName='GBCI02_IT223'" | format-list ShareName,Capabilities,CapabilityDescriptions,DriverName,ServerName
+        Example of how to retrieve color capabilities, like Color, Duplex.
+        Also shows DriverName and print server name
+        Get-WmiObject -Class win32_printer -Filter "ShareName='GBCI02_IT223'" | format-list ShareName,Capabilities,CapabilityDescriptions,DriverName,ServerName
 
-ShareName              : GBCI02_IT223
-Capabilities           : {4, 2, 3, 5}
-CapabilityDescriptions : {Copies, Color, Duplex, Collate}
-DriverName             : TP Output Gateway
-ServerName             : \\gbci02ps02
+        ShareName              : GBCI02_IT223
+        Capabilities           : {4, 2, 3, 5}
+        CapabilityDescriptions : {Copies, Color, Duplex, Collate}
+        DriverName             : TP Output Gateway
+        ServerName             : \\gbci02ps02
 
 #>
 
@@ -88,7 +103,7 @@ function Set-Printer  {
         [String]
         $printerShareName
     )
-    return (Get-WmiObject -Class win32_printer -Filter "ShareName='$printerShareName'").SetDefaultPrinter();
+    return (Get-WmiObject -Class win32_printer -Filter "ShareName='$printerShareName'").SetDefaultPrinter()
 }
 
-Export-ModuleMember -Function Get-Printer, Get-Printer -Variable DefaultPrinter
+Export-ModuleMember -Function Get-Printer, Set-Printer -Variable DefaultPrinter
