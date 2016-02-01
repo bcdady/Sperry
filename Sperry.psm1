@@ -4,8 +4,8 @@ Set-StrictMode -Version Latest; # enforces coding rules in expressions, scripts,
     .SYNOPSIS
         The Sperry 'autopilot' module includes functions to automate changes related to working in a specific office network environment, vs working elsewhere, or remotely
     .DESCRIPTION
-        Customizes the user's operating environment and launches specified applications, to operate in a workplace persona 
-        The module includes functions such as ProfileSync, CheckProcess, and utilizes the Write-Log function from the PSLogger Module.	
+        Customizes the user's operating environment and launches specified applications, to operate in a workplace persona
+        The module includes functions such as ProfileSync, CheckProcess, and utilizes the Write-Log function from the PSLogger Module.
     .NOTES
         NAME     : Sperry.ps1
         LANGUAGE : Windows PowerShell
@@ -31,7 +31,7 @@ function Set-DriveMaps {
         [Switch]
         $AllDrives
     )
-    
+
     Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name; # Log start time stamp
 
     # $AllDrives = 1 (true) means map all drives; 0 (false) means only map H: and S:
@@ -39,32 +39,32 @@ function Set-DriveMaps {
     if (Test-LocalAdmin) { Write-Log -Message 'Mapping drives with a different account, may result in them NOT appearing properly in Explorer' -Function $MyInvocation.MyCommand.Name -verbose; }
 
     # Define all drive letter = UNC path pairs here; we can control which-ones-to-map later
-    $Private:uncPaths = @{	
-        'H' = "\\gbci02sanct3\homes$\gbci\$env:USERNAME"
-        'I' = "\\gbci02sanct3\homes$\gbci\$env:USERNAME"+'2'
-        'R' = '\\gbci02sanct1\apps'
-        'S' = '\\gbci02sanct3\gbci\shared\it'
-        'X' = '\\gbci02sanct3\GBCI\Shared'
+    $Private:uncPaths = @{
+        'H' = "\\hcdata\homes$\gbci\$env:USERNAME"
+        'I' = "\\hcdata\homes$\gbci\$env:USERNAME"+'2'
+        'R' = '\\hcdata\apps'
+        'S' = '\\hcdata\gbci\shared\it'
+        'X' = '\\hcdata\GBCI\Shared'
         'V' = '\\glacierbancorp.local\SysVol\glacierbancorp.local\scripts'
     }
 
     if ($AllDrives) {
         # loop through all defined drive mappings
         $uncPaths.Keys | ForEach-Object {
-            if (!(Test-Path ${_}:)) {
-                write-log -Message "New-PSDrive ${_}: "$uncPaths.${_} -Function $MyInvocation.MyCommand.Name
+            if ( -not (Test-Path ${_}:)) {
+                write-log -Message "New-PSDrive ${_}: $($uncPaths.${_})" -Function $MyInvocation.MyCommand.Name
                 New-PSDrive -Persist -Name ${_} -Root $uncPaths.${_} -PSProvider FileSystem -scope Global -ErrorAction:SilentlyContinue
             }
             Start-Sleep -m 500
         }
     } else {
         if (!(Test-Path H:)) {
-            write-log -Message "New-PSDrive H: $($uncPaths.H)" -Function $MyInvocation.MyCommand.Name
+            write-log -Message "New-PSDrive H: $($uncPaths.H)" -Function $MyInvocation.MyCommand.Name -Verbose
             New-PSDrive -Persist -Name H -Root "$($uncPaths.H)" -PSProvider FileSystem -scope Global
         }
 
         if (!(Test-Path S:)) {
-            Write-Log -Message "New-PSDrive S: $($uncPaths.S)" -Function $MyInvocation.MyCommand.Name
+            Write-Log -Message "New-PSDrive S: $($uncPaths.S)" -Function $MyInvocation.MyCommand.Name -Verbose
             New-PSDrive -Persist -Name S -Root "$($uncPaths.S)" -PSProvider FileSystem -scope Global
         }
     }
@@ -118,7 +118,7 @@ function Connect-WiFi {
 
     Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name; # Log start time stamp;
     Write-Log -Message 'Check that SophosFW is stopped' -Function $MyInvocation.MyCommand.Name;
-    if (Get-SophosFW('Running')) { Set-SophosFW -ServiceAction Stop}
+    if (Get-SophosFW('Running')) { Set-SophosFW -ServiceStatus Stopped}
 
     Write-Log -Message 'Enumerate WiFi adapters (e.g. Intel(R) Wireless-N 7260)' -Function $MyInvocation.MyCommand.Name
 
@@ -156,7 +156,7 @@ function Disconnect-WiFi {
     Invoke-Command -ScriptBlock {netsh.exe wlan disconnect}
     <# http://www.powertheshell.com/reference/wmireference/root/cimv2/Win32_NetworkAdapter/
 
-        $NetConnectionStatus_ReturnValue = 
+        $NetConnectionStatus_ReturnValue =
         @{
         0='Disconnected'
         1='Connecting'
@@ -173,7 +173,7 @@ function Disconnect-WiFi {
         12='Credentials Required'
         ..='Other'
     #>
-    
+
     return $?
     Show-Progress -msgAction 'Stop' -msgSource $MyInvocation.MyCommand.Name; # Log end time stamp
 }
@@ -210,8 +210,8 @@ function Get-IPAddress {
         Write-Log
 #>
     New-Variable -Name OutputObj -Description 'Object to be returned by this function' -Scope Private
-    Get-WmiObject -Class Win32_NetworkAdapterConfiguration  -Filter 'IpEnabled = True AND DhcpEnabled = True' | 
-    ForEach-Object {
+    Get-WmiObject -Class Win32_NetworkAdapterConfiguration  -Filter 'IpEnabled = True AND DhcpEnabled = True' |
+    ForEach-Object -Process {
         #'Optimize New-Object invocation, based on Don Jones' recommendation: https://technet.microsoft.com/en-us/magazine/hh750381.aspx
         $Private:properties = @{
             'AdapterDescription'=$PSItem.Description
@@ -220,7 +220,7 @@ function Get-IPAddress {
             'DNSServers'=$PSItem.DNSServerSearchOrder
             'AdapterHost'=$PSItem.PSComputerName
         }
-        $Private:RetObject = New-Object –TypeName PSObject –Prop $properties
+        $Private:RetObject = New-Object -TypeName PSObject -Prop $properties
 
         return $RetObject; # $OutputObj
     } # end of foreach
@@ -235,19 +235,19 @@ function Redo-DHCP {
         Functionally equivalent to: ipconfig /release - wait - ipconfig /renew
     .NOTES
         NAME        :  Redo-DHCP
-        VERSION     :  1.0.0   
+        VERSION     :  1.0.0
         LAST UPDATED:  4/30/2015
     .LINK
         https://gallery.technet.microsoft.com/scriptcenter/Renew-IP-Adresses-Using-365f6bfa
 #>
-    $Private:ethernet = Get-WmiObject -Class Win32_NetworkAdapterConfiguration | Where-Object { $_.IpEnabled -eq $true -and $_.DhcpEnabled -eq $true}  
- 
-    foreach ($Private:adapter in $ethernet) { 
+    $Private:ethernet = Get-WmiObject -Class Win32_NetworkAdapterConfiguration | Where-Object { $_.IpEnabled -eq $true -and $_.DhcpEnabled -eq $true}
+
+    foreach ($Private:adapter in $ethernet) {
         Write-Debug -Message 'Releasing IP Address'
-        Start-Sleep -Seconds 2; 
-        $adapter.ReleaseDHCPLease() | out-Null 
+        Start-Sleep -Seconds 2;
+        $adapter.ReleaseDHCPLease() | out-Null
         Write-Debug -Message 'Renewing IP Address'
-        $adapter.RenewDHCPLease() | out-Null  
+        $adapter.RenewDHCPLease() | out-Null
         Write-Log -Message 'The New Ip Address is '$adapter.IPAddress' with Subnet '$adapter.IPSubnet'' -Function $MyInvocation.MyCommand.Name
     }
     return Get-IPAddress
@@ -279,42 +279,52 @@ function Start-CitrixReceiver {
     # Confirm Citrix XenApp shortcuts are available, and then launch frequently used apps
     if (test-path "$env:USERPROFILE\Desktop\Assyst.lnk") {
         Start-XenApp -Qlaunch 'Skype for Business'
-        Start-Sleep -Seconds 10
-        & "$env:USERPROFILE\Desktop\Microsoft OneNote 2010.lnk"
-        Start-Sleep -Seconds 45
+        Start-Sleep -Seconds 5
+        Write-Output -InputObject 'Starting Assyst (XenApp)'
+        & "$env:USERPROFILE\Desktop\Assyst.lnk"
+        Write-Output -InputObject 'Pausing for Receiver to start up ...'
+        Start-Sleep -Seconds 60
         # Start-XenApp -Qlaunch 'Outlook Web Access'
 #        & "$env:USERPROFILE\Desktop\Office Communicator.lnk"
-        & "$env:USERPROFILE\Desktop\IT Service Center.lnk"; Start-Sleep -Seconds 2
-        & "$env:USERPROFILE\Desktop\Microsoft Outlook 2010.lnk"; Start-Sleep -Seconds 2
-        & "$env:USERPROFILE\Desktop\S Drive.lnk"
+#        & "$env:USERPROFILE\Desktop\Microsoft OneNote 2010.lnk"
+#        & "$env:USERPROFILE\Desktop\IT Service Center.lnk"
+#        Start-Sleep -Seconds 2
+        Write-Output -InputObject 'Starting Outlook (XenApp)'
+        & "$env:USERPROFILE\Desktop\Microsoft Outlook 2010.lnk"
+        Start-Sleep -Seconds 2
+        Write-Output -InputObject 'Starting Explorer (XenApp)'
+        & "$env:USERPROFILE\Desktop\H Drive.lnk"
+        Start-Sleep -Seconds 2
+        Write-Output -InputObject 'Starting Firefox (XenApp)'
+        xa_firefox
+
+        Write-Output -InputObject 'Opening Nessus Security Center'
+        & 'H:\Favorites\Links\GBCI IT\Nessus SecurityCenter.url'
+        Write-Output -InputObject 'Opening GoToMeeting'
+        & 'H:\Favorites\Links\GBCI IT\GoToMeeting.url'
 
         <# Optional RFE : Open more browser 'favorites':
         e.g
-        H:\Favorites\Links\Login - Splunk.url
-
-            H:\Favorites\Links\assyst (test).url
-            H:\Favorites\Links\Assyst.url
-            Exchange Admin Center.url
-            Kbox.url
             H:\Favorites\Links\Login - Splunk.url
-            MBAM BitLocker Key Recovery.url
-            OnCommand Balance.url
-            Veeam Backup Enterprise Manager.url
+            Exchange Admin Center.url
             vSphere Web Client.url
             WSUS - Report Manager.url
             Nessus SecurityCenter.url
-            AppSense Self-Service.url
-            Secure Mailbox - Login.url
-            H:\Favorites\Links\Outlook Web App - Calendar.url
-            Citrix Director.url
-            H:\Favorites\Links\Outlook Web App - mail.url
         #>
     } else {
         Write-Log -Message 'Unable to locate XenApp shortcuts. Please check network connectivity to workplace resources and try again.' -Function $MyInvocation.MyCommand.Name -verbose
     }
 
+<#    Write-Output -InputObject 'Waiting for user to configure Avaya in Skype for Business client'
+    Show-MsgBox -Message 'Have you enabled Avaya Communicator and existed Skype (test) client yet?' -Title 'Reminder' -Icon Question -BoxType YesNo -DefaultButton 2
+    Start-sleep -Seconds 2
+    if ((Show-MsgBox -Message 'Are you ready to re-start Skype with Avaya Communicator now?' -Title 'Reminder' -Icon Question -BoxType YesNo -DefaultButton 2) -eq 'Yes')
+    {
+        Start-XenApp -Qlaunch 'Skype for Business'
+    }
+#>
     Show-Progress -msgAction 'Stop' -msgSource $MyInvocation.MyCommand.Name; # Log end time stamp
-    return (Get-Process -Name Receiver)
+    return $true # (Get-Process -Name Receiver).Description
 }
 
 function Set-UAC {
@@ -331,7 +341,7 @@ function Set-UAC {
 
     # Wait for UAC to be complete before proceeding
     Test-ProcessState -ProcessName 'UserAccountControlSettings' -Wait
-    
+
     Show-Progress -msgAction 'Stop' -msgSource $MyInvocation.MyCommand.Name; # Log end time stamp
 }
 
@@ -339,12 +349,12 @@ function Set-Workplace {
     param (
         [Parameter(Mandatory=$true, Position=0, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$true,
         HelpMessage='Specify workplace zone, or context. Accepts Work or Home.')]
-        [String[]]
+        [String]
         [alias('mode','scope')]
         [ValidateSet('Office', 'Remote')]
-        $zone
+        $Zone
     )
-    Show-Progress -msgAction Start -msgSource $MyInvocation.MyCommand.Name; 
+    Show-Progress -msgAction Start -msgSource $MyInvocation.MyCommand.Name;
     switch ($zone) {
         'Office' {
             Write-Log -Message 'Disconnecting WiFi' -Function $MyInvocation.MyCommand.Name -Verbose
@@ -376,11 +386,11 @@ function Set-Workplace {
                     '10.10.*' { }
                     '10.20.*' { }
                     '10.100.*' { }
-                } 
+                }
                 # XenApp Session
                 Write-Log -Message 'Set Default network printer to GBCI92_IT252' -Function $MyInvocation.MyCommand.Name
                 if ((Get-Printer -Default).Name -ne 'GBCI92_IT252') {
-                    Set-Printer -printerShareName GBCI91_IT252
+                    Set-Printer -printerShareName GBCI92_IT252
                 }
             }
 
@@ -394,7 +404,7 @@ function Set-Workplace {
             # In the following block it's referred to as 'taskmgr', because the procexp option was used to replace native taskmgr (Win7)
 
             Set-UAC
-    	    
+
             Write-Log -Message 'Stop FW Services' -Function $MyInvocation.MyCommand.Name
             Set-SophosFW -ServiceStatus Stopped
 
@@ -405,11 +415,11 @@ function Set-Workplace {
             Clear-IECookies 'cag'
 
             Write-Log -Message 'Connect to default WiFi network' -Function $MyInvocation.MyCommand.Name
-            Connect-WiFi -SSID 'Halcyon' -sleep 5
+                Connect-WiFi -SSID 'Halcyon' -sleep 5
 
             # Update IE home page to skip intranet and go straight to CAG
             Write-Log -Message 'Setting CAG as Internet Explorer start page.' -Function $MyInvocation.MyCommand.Name
-            Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Internet Explorer\Main' -Name 'Start Page' -Value 'https://cag.glacierbancorp.com/' -force -ErrorAction:SilentlyContinue 
+            Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Internet Explorer\Main' -Name 'Start Page' -Value 'https://cag.glacierbancorp.com/' -force -ErrorAction:SilentlyContinue
             Set-ItemProperty -Path 'HKCU:\Software\Policies\Microsoft\Internet Explorer\Main' -Name 'Start Page' -Value 'https://cag.glacierbancorp.com/' -force -ErrorAction:SilentlyContinue
 
             # Set Firefox as local default browser
@@ -432,24 +442,27 @@ function Set-Workplace {
     }
 
     Write-Log -Message 'Open Firefox' -Function $MyInvocation.MyCommand.Name
-    Set-ProcessState -ProcessName Firefox -Action Start 
+    Set-ProcessState -ProcessName Firefox -Action Start
 
     Write-Log -Message 'Running puretext' -Function $MyInvocation.MyCommand.Name
     Set-ProcessState puretext Start
-	
-    # Reminders: 
-	$elect = read-host "Open Desktop documents? [Y/N]" 
-	switch ($elect)  { 
+
+    # Reminders:
+    # # # RFE : add time-out to the following prompt ??? as a background job?
+    $elect = read-host 'Open Desktop documents? [Y/N]'
+    Start-Sleep -Seconds 2
+    switch ($elect)
+    {
         Y {
-			Write-Log -Message 'Opening all Desktop Documents' -Function $MyInvocation.MyCommand.Name
-			# Open all desktop PDF files
-			Get-ChildItem $env:USERPROFILE\Desktop\*.pdf | foreach { & $_ }
-			# Open all desktop Word doc files
-			Get-ChildItem $env:USERPROFILE\Desktop\*.doc* | foreach { & $_ }
-		} 
-        N { } 
-        default {"Sorry $elect is not a valid selection"; Start-Sleep -seconds 1; $elect = read-host "Open Desktop documents? [Y/N]"; escape $elect} 
-    } 
+            Write-Log -Message 'Opening all Desktop Documents' -Function $MyInvocation.MyCommand.Name
+            # Open all desktop PDF files
+            Get-ChildItem $env:USERPROFILE\Desktop\*.pdf | foreach { & $_ ; Start-Sleep -Milliseconds 200}
+            # Open all desktop Word doc files
+            Get-ChildItem $env:USERPROFILE\Desktop\*.doc* | foreach { & $_ ; Start-Sleep -Milliseconds 200}
+        }
+        N { }
+        default { "Sorry $elect is not a valid selection"; $elect = read-host 'Open Desktop documents? [Y/N]'; escape $elect}
+    }
 
     Show-Progress -msgAction Stop -msgSource $MyInvocation.MyCommand.Name;  # Log end time stamp
 
