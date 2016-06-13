@@ -1,4 +1,4 @@
-#Requires -Version 3.0 -Modules PSLogger
+#Requires -Version 3.0
 Set-StrictMode -Version Latest; # enforces coding rules in expressions, scripts, and script blocks based on latest available rules
 <#
     .SYNOPSIS
@@ -39,6 +39,7 @@ function Set-DriveMaps {
     if (Test-LocalAdmin) { Write-Log -Message 'Mapping drives with a different account, may result in them NOT appearing properly in Explorer' -Function $MyInvocation.MyCommand.Name -verbose; }
 
     # Define all drive letter = UNC path pairs here; we can control which-ones-to-map later
+# RFE 2016/2/8 : read in UNC path / drive letter mappings from sperry.json : Sperry.uncPaths
     $Private:uncPaths = @{
         'H' = "\\hcdata\homes$\gbci\$env:USERNAME"
         'I' = "\\hcdata\homes$\gbci\$env:USERNAME"+'2'
@@ -116,28 +117,101 @@ function Connect-WiFi {
         $WaitTime = 10
     )
 
+    $NetConnectionStatus = @{
+        0 = 'Disconnected'
+        1 = 'Connecting'
+        2 = 'Connected'
+        3 = 'Disconnecting'
+        4 = 'Hardware Not Present'
+        5 = 'Hardware Disabled'
+        6 = 'Hardware Malfunction'
+        7 = 'Media Disconnected'
+        8 = 'Authenticating'
+        9 = 'Authentication Succeeded'
+        10 = 'Authentication Failed'
+        11 = 'Invalid Address'
+        12 = 'Credentials Required'
+    }
+#         ..='Other'
+
     Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name; # Log start time stamp;
     Write-Log -Message 'Check that SophosFW is stopped' -Function $MyInvocation.MyCommand.Name;
     if (Get-SophosFW('Running')) { Set-SophosFW -ServiceStatus Stopped}
 
-    Write-Log -Message 'Enumerate WiFi adapters (e.g. Intel(R) Wireless-N 7260)' -Function $MyInvocation.MyCommand.Name
+    Write-Log -Message 'Enumerate WiFi adapter(s)' -Function $MyInvocation.MyCommand.Name
 
+    # Use Get-WmiObject, which provides .Enable() method
     $Private:wireless_adapters = @(Get-WmiObject Win32_NetworkAdapter -Filter "PhysicalAdapter=True AND Name LIKE '%ireless%'") # | Select-Object -Property Name,NetConnectionID,NetConnectionStatus,NetEnabled) # CimInstance
     ForEach-Object -InputObject $wireless_adapters {
-        Write-Log -Message "Connecting $($PSItem.NetConnectionID) to $SSID" -Function $MyInvocation.MyCommand.Name
-        if ($PSItem.NetEnabled -ne $true) {
-            write-log -Message 'Enabling Adapter' -Function $MyInvocation.MyCommand.Name
-            $PSItem.enable()
+        Write-Log -Message "Connecting $($PSItem.NetConnectionID) to $SSID" -Function $MyInvocation.MyCommand.Name -Verbose
+        if ($PSItem.Availability -ne 3) {
+            if (test-localadmin) {
+                if (($PSItem.enable()).ReturnValue -eq 0) {
+                    write-log -Message 'Adapter Enabled' -Function $MyInvocation.MyCommand.Name -Verbose
+                } else {
+                    throw "A fatal error was encountered trying to enable Network Adapter $($PSItem.Name) (Device $($PSItem.DeviceID))"
+                }
+            } else {
+                Write-Log -Message 'Attempting to invoke new powershell sessions with RunAs (elevated permissions) to enable adapter via' -Function $MyInvocation.MyCommand.Name -Verbose
+                $ScriptBlock = { $Private:wireless_adapters = @(Get-WmiObject Win32_NetworkAdapter -Filter "PhysicalAdapter='true' AND ipenabled='true' AND Name LIKE '%ireless%'"); ForEach-Object -InputObject $wireless_adapters { ($PSItem.enable()).ReturnValue } }
+                $return = Start-Process -FilePath "$PSHOME\powershell.exe" -ArgumentList "-NoProfile -NonInteractive -Command $ScriptBlock" -Verb RunAs -WindowStyle Normal
+                if ($return -eq 0) {
+                    write-log -Message 'Adapter enabled' -Function $MyInvocation.MyCommand.Name -Verbose
+                }
+                else
+                {
+                    throw "A fatal error was encountered trying to enable Network Adapter $($PSItem.Name) (Device $($PSItem.DeviceID))"
+                }
+            }
             Start-Sleep -Seconds 1
         }
         Write-Log -Message "netsh.exe wlan connect $SSID" -Function $MyInvocation.MyCommand.Name
-        Invoke-Command -ScriptBlock {netsh.exe wlan connect "$SSID"}
+        $results = Invoke-Command -ScriptBlock {netsh.exe wlan connect "$SSID"}
+        Write-Log -Message $results -Function $MyInvocation.MyCommand.Name
         Start-Sleep -Seconds $WaitTime
     }
     return $SSID, $?
 
     Show-Progress -msgAction 'Stop' -msgSource $MyInvocation.MyCommand.Name; # Log end time stamp
 
+}
+
+function Disconnect-WiFi {
+<#
+    .SYNOPSIS
+        Disconnect from any/all WiFi networks
+    .DESCRIPTION
+        Designed as a complement to Connect-WiFi, this disconnect function automates disconnecting from wifi, e.g. for when setting into Office workplace
+    .EXAMPLE
+		.> Disconnect-WiFi
+
+		True - indicates the netsh command returned successful
+#>
+    Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name; # Log start time stamp
+    Write-Log -Message 'netsh.exe wlan disconnect' -Function $MyInvocation.MyCommand.Name
+    Invoke-Command -ScriptBlock {netsh.exe wlan disconnect}
+    <# http://www.powertheshell.com/reference/wmireference/root/cimv2/Win32_NetworkAdapter/
+
+        $NetConnectionStatus_ReturnValue =
+        @{
+        0='Disconnected'
+        1='Connecting'
+        2='Connected'
+        3='Disconnecting'
+        4='Hardware Not Present'
+        5='Hardware Disabled'
+        6='Hardware Malfunction'
+        7='Media Disconnected'
+        8='Authenticating'
+        9='Authentication Succeeded'
+        10='Authentication Failed'
+        11='Invalid Address'
+        12='Credentials Required'
+        ..='Other'
+    #>
+
+    return $?
+    Show-Progress -msgAction 'Stop' -msgSource $MyInvocation.MyCommand.Name; # Log end time stamp
 }
 
 function Disconnect-WiFi {
@@ -277,28 +351,30 @@ function Start-CitrixReceiver {
     }
 
     # Confirm Citrix XenApp shortcuts are available, and then launch frequently used apps
-    if (test-path "$env:USERPROFILE\Desktop\Assyst.lnk") {
-        Start-XenApp -Qlaunch 'Skype for Business'
-        Start-Sleep -Seconds 5
-        Write-Output -InputObject 'Starting Assyst (XenApp)'
-        & "$env:USERPROFILE\Desktop\Assyst.lnk"
+    if (test-path -Path "$env:USERPROFILE\Desktop\Assyst.lnk" -PathType Leaf) {
+        Write-Output -InputObject 'Starting cmd'
+        Start-XenApp -Qlaunch 'cmd'
         Write-Output -InputObject 'Pausing for Receiver to start up ...'
         Start-Sleep -Seconds 60
-        # Start-XenApp -Qlaunch 'Outlook Web Access'
-#        & "$env:USERPROFILE\Desktop\Office Communicator.lnk"
-#        & "$env:USERPROFILE\Desktop\Microsoft OneNote 2010.lnk"
-#        & "$env:USERPROFILE\Desktop\IT Service Center.lnk"
-#        Start-Sleep -Seconds 2
-        Write-Output -InputObject 'Starting Outlook (XenApp)'
-        & "$env:USERPROFILE\Desktop\Microsoft Outlook 2010.lnk"
+        Write-Output -InputObject 'Starting OneNote'
+        Start-XenApp -Qlaunch 'OneNote'
+        Write-Output -InputObject 'Starting Outlook'
+        Start-XenApp -Qlaunch 'Microsoft Outlook 2010'
         Start-Sleep -Seconds 2
-        Write-Output -InputObject 'Starting Explorer (XenApp)'
+        Write-Output -InputObject 'Skype for Business'
+        Start-XenApp -Qlaunch 'Skype for Business'
+        Start-Sleep -Seconds 2
+
+        Write-Output -InputObject 'Starting ITSC'
+        & "$env:USERPROFILE\Desktop\IT Service Center.lnk"
+        Start-Sleep -Seconds 1
+        Write-Output -InputObject 'Starting H Drive'
         & "$env:USERPROFILE\Desktop\H Drive.lnk"
-        Start-Sleep -Seconds 2
+        Start-Sleep -Seconds 1
         Write-Output -InputObject 'Starting Firefox (XenApp)'
         xa_firefox
 
-        Write-Output -InputObject 'Opening Nessus Security Center'
+<#        Write-Output -InputObject 'Opening Nessus Security Center'
         & 'H:\Favorites\Links\GBCI IT\Nessus SecurityCenter.url'
         Write-Output -InputObject 'Opening GoToMeeting'
         & 'H:\Favorites\Links\GBCI IT\GoToMeeting.url'
@@ -315,14 +391,6 @@ function Start-CitrixReceiver {
         Write-Log -Message 'Unable to locate XenApp shortcuts. Please check network connectivity to workplace resources and try again.' -Function $MyInvocation.MyCommand.Name -verbose
     }
 
-<#    Write-Output -InputObject 'Waiting for user to configure Avaya in Skype for Business client'
-    Show-MsgBox -Message 'Have you enabled Avaya Communicator and existed Skype (test) client yet?' -Title 'Reminder' -Icon Question -BoxType YesNo -DefaultButton 2
-    Start-sleep -Seconds 2
-    if ((Show-MsgBox -Message 'Are you ready to re-start Skype with Avaya Communicator now?' -Title 'Reminder' -Icon Question -BoxType YesNo -DefaultButton 2) -eq 'Yes')
-    {
-        Start-XenApp -Qlaunch 'Skype for Business'
-    }
-#>
     Show-Progress -msgAction 'Stop' -msgSource $MyInvocation.MyCommand.Name; # Log end time stamp
     return $true # (Get-Process -Name Receiver).Description
 }
@@ -355,14 +423,16 @@ function Set-Workplace {
         $Zone
     )
     Show-Progress -msgAction Start -msgSource $MyInvocation.MyCommand.Name;
+
+    # Always simplify UAC prompt level, so we run this before {switching ($zone)}
+    Write-Log -Message 'Checking UserAccountControl level' -Function $MyInvocation.MyCommand.Name
+    Set-UAC
+
     switch ($zone) {
         'Office' {
             Write-Log -Message 'Disconnecting WiFi' -Function $MyInvocation.MyCommand.Name -Verbose
             Write-Log -Message 'netsh.exe wlan disconnect' -Function $MyInvocation.MyCommand.Name
             Invoke-Command -ScriptBlock {netsh.exe wlan disconnect}; # disconnect any WiFi
-
-            Write-Log -Message 'Checking UserAccountControl level' -Function $MyInvocation.MyCommand.Name
-            Set-UAC
 
             Write-Log -Message 'Confirm workplace firewall is functional' -Function $MyInvocation.MyCommand.Name -Verbose
             Set-SophosFW -ServiceStatus Running
@@ -370,29 +440,14 @@ function Set-Workplace {
             Write-Log -Message 'Map all defined network drives' -Function $MyInvocation.MyCommand.Name -Verbose
             Set-DriveMaps -AllDrives
 
+            # Update IE home page to intranet Infrastructure page
+            $IEHomePage = 'https://intranet2/pg_view.aspx?PageID=1294'
+            Write-Log -Message 'Setting Intranet-Infrastrucure as Internet Explorer start page.' -Function $MyInvocation.MyCommand.Name
+            Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Internet Explorer\Main' -Name 'Start Page' -Value $IEHomePage -force -ErrorAction:SilentlyContinue
+            Set-ItemProperty -Path 'HKCU:\Software\Policies\Microsoft\Internet Explorer\Main' -Name 'Start Page' -Value $IEHomePage -force -ErrorAction:SilentlyContinue
+
             Write-Log -Message 'Start Citrix Receiver' -Function $MyInvocation.MyCommand.Name -Verbose
             Start-CitrixReceiver
-            # Sync files
-            Write-Log -Message 'Running Profile-Sync' -Function $MyInvocation.MyCommand.Name -verbose
-            Sync-Profiles; # available from . .\Scripts\SyncProfiles.ps1, which is loaded in user profile script
-            Write-Log -Message 'Done with Profile-Sync' -Function $MyInvocation.MyCommand.Name
-
-            # Check default printer name, and re-set if necessary
-            # ** RFE enhance to ask for printer name, select from list based on current IP
-            # Get-Printer -Network
-            if ($env:ComputerName -ne 'GC91IT78') {
-                # set default printer based on IP address ranges for common IT locations
-                switch (get-IPaddress) {
-                    '10.10.*' { }
-                    '10.20.*' { }
-                    '10.100.*' { }
-                }
-                # XenApp Session
-                Write-Log -Message 'Set Default network printer to GBCI92_IT252' -Function $MyInvocation.MyCommand.Name
-                if ((Get-Printer -Default).Name -ne 'GBCI92_IT252') {
-                    Set-Printer -printerShareName GBCI92_IT252
-                }
-            }
 
             # Set IE as local default browser; since there's challenges with Firefox's enhanced security and employer's network monitoring
             Set-ItemProperty -Path HKCU:\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\http\UserChoice -Name Progid -Value IE.HTTP
@@ -403,8 +458,6 @@ function Set-Workplace {
             # for SysInternals ProcExp, check if it's already running, because re-launching it, doesn't stay minimized
             # In the following block it's referred to as 'taskmgr', because the procexp option was used to replace native taskmgr (Win7)
 
-            Set-UAC
-
             Write-Log -Message 'Stop FW Services' -Function $MyInvocation.MyCommand.Name
             Set-SophosFW -ServiceStatus Stopped
 
@@ -412,24 +465,27 @@ function Set-Workplace {
             Remove-DriveMaps
 
             Write-Log -Message 'Clear CAG cookies from IE' -Function $MyInvocation.MyCommand.Name
-            Clear-IECookies 'cag'
+            Clear-IECookie 'cag'
 
             Write-Log -Message 'Connect to default WiFi network' -Function $MyInvocation.MyCommand.Name
-                Connect-WiFi -SSID 'Halcyon' -sleep 5
+            Connect-WiFi -SSID 'Halcyon' -sleep 5
 
             # Update IE home page to skip intranet and go straight to CAG
+            $IEHomePage = 'https://cag.glacierbancorp.com/'
             Write-Log -Message 'Setting CAG as Internet Explorer start page.' -Function $MyInvocation.MyCommand.Name
-            Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Internet Explorer\Main' -Name 'Start Page' -Value 'https://cag.glacierbancorp.com/' -force -ErrorAction:SilentlyContinue
-            Set-ItemProperty -Path 'HKCU:\Software\Policies\Microsoft\Internet Explorer\Main' -Name 'Start Page' -Value 'https://cag.glacierbancorp.com/' -force -ErrorAction:SilentlyContinue
+            Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Internet Explorer\Main' -Name 'Start Page' -Value $IEHomePage -force -ErrorAction:SilentlyContinue
+            Set-ItemProperty -Path 'HKCU:\Software\Policies\Microsoft\Internet Explorer\Main' -Name 'Start Page' -Value $IEHomePage -force -ErrorAction:SilentlyContinue
 
             # Set Firefox as local default browser
             Set-ItemProperty -Path HKCU:\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\http\UserChoice -Name Progid -Value FirefoxURL
             Set-ItemProperty -Path HKCU:\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoice -Name Progid -Value FirefoxURL
 
-            & "$env:ProgramFiles\Internet Explorer\iexplore.exe" 'https://cag.glacierbancorp.com'
+            & "$env:ProgramFiles\Internet Explorer\iexplore.exe" $IEHomePage
         }
         Default {}
     }
+
+    # Then we resume remaining instructions we always process
 
     Write-Log -Message 'Start PortableApps menu' -Function $MyInvocation.MyCommand.Name
     # Start other stuff; nice to haves
@@ -450,7 +506,7 @@ function Set-Workplace {
     # Reminders:
     # # # RFE : add time-out to the following prompt ??? as a background job?
     $elect = read-host 'Open Desktop documents? [Y/N]'
-    Start-Sleep -Seconds 2
+    Start-Sleep -Seconds 1
     switch ($elect)
     {
         Y {
@@ -458,7 +514,7 @@ function Set-Workplace {
             # Open all desktop PDF files
             Get-ChildItem $env:USERPROFILE\Desktop\*.pdf | foreach { & $_ ; Start-Sleep -Milliseconds 200}
             # Open all desktop Word doc files
-            Get-ChildItem $env:USERPROFILE\Desktop\*.doc* | foreach { & $_ ; Start-Sleep -Milliseconds 200}
+            Get-ChildItem $env:USERPROFILE\Desktop\*.doc* | foreach { & $_ ; Start-Sleep -Milliseconds 800}
         }
         N { }
         default { "Sorry $elect is not a valid selection"; $elect = read-host 'Open Desktop documents? [Y/N]'; escape $elect}
@@ -468,5 +524,3 @@ function Set-Workplace {
 
     return "Ready for $zone work"
 }
-
-Export-ModuleMember -function * -alias *

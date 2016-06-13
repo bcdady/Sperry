@@ -1,4 +1,4 @@
-﻿#Requires -Version 2 -Modules PSLogger, Sperry
+﻿#Requires -Version 2
 
 # Predefine XenApp Qlaunch arguments for running Citrix [pnagent] applications
 # By Predefining at the script scope, we can evaluate parameters using ValidateScript against this hashtable
@@ -16,6 +16,7 @@ $Script:XenApps = @{
     OneNote      = 'GBCI02XA:Microsoft OneNote 2010'
     Outlook      = 'GBCI02XA:Microsoft Outlook 2010'
     PowerPoint   = 'GBCI02XA:Microsoft Powerpoint 2010'
+    PrinterList  = 'GBCI02XA:Printer List5257'
     RDP          = 'GBCI02XA:RDP Client'
     S_Drive      = 'GBCI02XA:S Drive'
     Synergy      = 'GBCI02XA:Synergy User Client'
@@ -23,7 +24,7 @@ $Script:XenApps = @{
     visio        = 'GBCI02XA:Microsoft Visio 2013'
 }
 
-function Start-XenApp 
+function Start-XenApp
 {
 <#
     .SYNOPSIS
@@ -50,7 +51,7 @@ function Start-XenApp
         Enumerate available XenApp shortcuts to launch
     .NOTES
         NAME        :  Start-XenApp
-        VERSION     :  1.3 
+        VERSION     :  1.3
         LAST UPDATED:  4/9/2015
         AUTHOR      :  Bryan Dady
 #>
@@ -58,42 +59,42 @@ function Start-XenApp
     #    [OutputType([int])]
     Param (
         # PNArgs specifies whether PNAgent.exe should attempt to reconnect an existing session, Qlaunch a new app, or other supported behavior
-        [Parameter(Mandatory = $false, 
+        [Parameter(Mandatory = $false,
                 ValueFromPipeline = $false,
-                ValueFromPipelineByPropertyName = $false, 
-                ValueFromRemainingArguments = $false, 
+                ValueFromPipelineByPropertyName = $false,
+                ValueFromRemainingArguments = $false,
                 Position = 0,
                 ParameterSetName = 'Mode'
 		)]
         [Alias('args','XenApp','launch','start','open')]
-        [String] 
+        [String]
         $Qlaunch = '-ListAvailable',
 
-        [Parameter(Mandatory = $false, 
+        [Parameter(Mandatory = $false,
                 Position = 3,
                 ParameterSetName = 'Launch'
 		)]
         [ValidateNotNullOrEmpty()]
         [Alias('connect')]
-        [switch] 
+        [switch]
         $Reconnect,
 
-        [Parameter(Mandatory = $false, 
+        [Parameter(Mandatory = $false,
                 Position = 1,
                 ParameterSetName = 'Mode'
 		)]
         [ValidateNotNullOrEmpty()]
         [Alias('end', 'close', 'halt', 'exit', 'stop')]
-        [switch] 
+        [switch]
         $Terminatewait,
 
-        [Parameter(Mandatory = $false, 
+        [Parameter(Mandatory = $false,
                 Position = 2,
                 ParameterSetName = 'Mode'
 		)]
         [ValidateNotNullOrEmpty()]
         [Alias('list', 'show', 'enumerate')]
-        [switch] 
+        [switch]
         $ListAvailable
 
     )
@@ -103,9 +104,9 @@ function Start-XenApp
 
     Show-Progress -msgAction Start -msgSource $PSCmdlet.MyInvocation.MyCommand.Name
 
-    if ($PSBoundParameters.ContainsKey('Qlaunch')) 
+    if ($PSBoundParameters.ContainsKey('Qlaunch'))
     {
-        if ($XenApps.Keys -contains $Qlaunch) 
+        if ($XenApps.Keys -contains $Qlaunch)
         {
             $Private:Arguments = '/CitrixShortcut: (1)', "/QLaunch ""$($XenApps.$Qlaunch)"""
         } else {
@@ -126,31 +127,31 @@ function Start-XenApp
         # /qlaunch  (syntax example pnagent.exe /Qlaunch "Farm1:Calc")
 
         # As long as we have non-0 arguments, run it using Start-Process and arguments list
-        if ($Private:Arguments -ne $NULL) 
+        if ($Private:Arguments -ne $NULL)
         {
             Write-Log -Message "Starting $($Arguments.Replace('/CitrixShortcut: (1) /QLaunch ',''))" -Function $PSCmdlet.MyInvocation.MyCommand.Name -Verbose
             # $pnagent
             Start-Process $pnagent -ArgumentList "$Private:Arguments" -Verbose
         }
-        else 
+        else
         {
             Write-Log -Message "Unrecognized XenApp shortcut: $XenApp`nPlease try again with one of the following:" -Function $PSCmdlet.MyInvocation.MyCommand.Name
             $XenApps.Keys
             break
         }
     }
-    elseif ($PSBoundParameters.ContainsKey('Reconnect')) 
-    { 
+    elseif ($PSBoundParameters.ContainsKey('Reconnect'))
+    {
         Write-Log -Message 'Start pnagent.exe /reconnect' -Function $PSCmdlet.MyInvocation.MyCommand.Name
         Start-Process $pnagent -ArgumentList '/reconnect'
     }
-    elseif ($PSBoundParameters.ContainsKey('Terminatewait')) 
-    { 
+    elseif ($PSBoundParameters.ContainsKey('Terminatewait'))
+    {
         Write-Log -Message 'Start pnagent.exe /terminatewait' -Function $PSCmdlet.MyInvocation.MyCommand.Name
         Start-Process $pnagent -ArgumentList '/terminatewait'
     }
-    elseif ($PSBoundParameters.ContainsKey('ListAvailable')) 
-    { 
+    elseif ($PSBoundParameters.ContainsKey('ListAvailable'))
+    {
         Write-Log -Message '`nEnumerating all available `$XenApps Keys' -Function $PSCmdlet.MyInvocation.MyCommand.Name
         $XenApps |
         Sort-Object -Property Name |
@@ -160,29 +161,36 @@ function Start-XenApp
     Show-Progress -msgAction Stop -msgSource $PSCmdlet.MyInvocation.MyCommand.Name
 }
 
+<#
 function Enter-XASession {
     # For automating user session setup / maintenance tasks from within Citrix XenApp context Sync
     # files Write-Log -Message 'Running Profile-Sync' -Function $MyInvocation.MyCommand.Name -verbose;
     # ** replace with direct access to the function via inclusion of the ps1 file in this Sperry module
     # *** First the Profile-Sync function(s) need to be cleaned up and modularized
-    # 
+    #
 	# Write-Log -Message 'Done with Profile-Sync' -Function $MyInvocation.MyCommand.Name;
 
-    # Check default printer name, and re-set if necesarry
+    # Check default printer name, and re-set if necessary
     # ** RFE enhance to ask for printer name, select from list based on current IP
-    # Get-Printer -Network if ($env:ComputerName -ne 'GC91IT78') { Determine client
-    # (Receiver) location on the network, and check/set default printer based on IP address
-    # ranges for common IT locations
-    switch (get-IPaddress) {
-        '10.10.*' { }
-        '10.20.*' { }
-        '10.100.*' { }
-    } 
+    # Get-Printer -Network
+    if ($env:ComputerName -ne 'GC91IT78') {
+        # set default printer based on IP address ranges for common IT locations
+        switch (get-IPaddress) {
+            '10.10.*' { }
+            '10.20.*' { }
+            '10.100.91*' { }
+            '10.100.92*' { 
+                # XenApp Session
+                Write-Log -Message 'Set Default network printer to GBCI92_IT252' -Function $MyInvocation.MyCommand.Name
+                if ((Get-Printer -Default).Name -ne 'GBCI92_IT252') {
+                    Set-Printer -printerShareName GBCI92_IT252
+                }
+            }
+        }
     # XenApp Session
     Write-Log -Message 'Set Default network printer to GBCI91_IT252' -Function $MyInvocation.MyCommand.Name;
     if ((Get-Printer -Default).Name -ne 'GBCI91_IT252') {
         Set-Printer -printerShareName GBCI91_IT252
     }
-    
 }
-Export-ModuleMember -function *;
+#>

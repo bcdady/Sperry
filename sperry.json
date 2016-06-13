@@ -1,0 +1,68 @@
+// User costumizations for Sperry -autopilot- PowerShell module.
+{
+	"version": "0.1.2",
+	"updated": "03-28-2016",
+    "XenApp": {
+        "Assyst": "GBCI02XA:Assyst",
+        "Communicator": "GBCI02XA:Office Communicator",
+        "cmd": "GBCI02XA:Command Line",
+        "OCS": "GBCI02XA:Office Communicator",
+        "Excel": "GBCI02XA:Microsoft Excel 2010",
+        "H_Drive": "GBCI02XA:H Drive",
+        "IE": "GBCI02XA:Internet Explorer",
+        "IE_11": "GBCI02XA:Internet Explorer 11",
+        "ITSC": "GBCI02XA:IT Service Center",
+        "MSTSC": "GBCI02XA:RDP Client",
+        "OneNote": "GBCI02XA:Microsoft OneNote 2010",
+        "Outlook": "GBCI02XA:Microsoft Outlook 2010",
+        "PowerPoint": "GBCI02XA:Microsoft Powerpoint 2010",
+        "PrinterList": "GBCI02XA:Printer List5257",
+        "RDP": "GBCI02XA:RDP Client",
+        "S_Drive": "GBCI02XA:S Drive",
+        "Synergy": "GBCI02XA:Synergy User Client",
+        "Word": "GBCI02XA:Microsoft Word 2010",
+        "visio": "GBCI02XA:Microsoft Visio 2013"
+    },
+    // Define known process names and their full path :
+    "ProcessState.Path": {
+        "bttray": "$env:ProgramFiles\\WIDCOMM\\Bluetooth Software\\BTTray.exe",
+        "chrome": "$env:SystemDrive\\SWTOOLS\\PortableApps\\GoogleChromePortable\\App\\Chrome-bin\\chrome.exe",
+        "concentr": "${env:ProgramFiles(x86)}\\Citrix\\ICA Client\\concentr.exe",
+        "evernote": "$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Evernote\\Evernote.lnk",
+        "Firefox": "$env:SystemDrive\\SWTOOLS\\PortableApps\\FirefoxPortable\\FirefoxPortable.exe",
+        "iexplore": "$env:ProgramFiles\\Internet Explorer\\iexplore.exe",
+        "katmouse": "$env:ProgramFiles\\KatMouse\\KatMouse.exe",
+        "msosync": "$env:ProgramFiles\\Microsoft Office\\Office14\\MSOSYNC.exe",
+        "NitroPDFReader": "${env:ProgramFiles(x86)}\\Nitro\\Reader 3\\NitroPDFReader.exe",
+        "nsepa": "$env:ProgramFiles\\Citrix\\Secure Access Client\\nsepa.exe",
+        "onenote": "$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Microsoft Office\\Microsoft OneNote 2010.lnk",
+        "outlook": "$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Microsoft Office\\Microsoft Outlook 2010.lnk",
+        "pnagent": "${env:ProgramFiles(x86)}\\Citrix\\ICA Client\\pnagent.exe",
+        "pnamain": "${env:ProgramFiles(x86)}\\Citrix\\ICA Client\\pnamain.exe",
+        "procexp": "$env:SystemDrive\\SWTOOLS\\SysinternalsSuite\\procexp64.exe",
+        "puretext": "$env:SystemDrive\\SWTOOLS\\Utilities\\PureText.exe",
+        "receiver": "$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Citrix\\Receiver.lnk",
+        "redirector": "${env:ProgramFiles(x86)}\\Citrix\\ICA Client\\redirector.exe",
+        "ssonsvr": "${env:ProgramFiles(x86)}\\Citrix\\ICA Client\\ssonsvr.exe",
+        "taskmgr": "$env:SystemDrive\\SWTOOLS\\SysinternalsSuite\\procexp.exe",
+        "wfcrun32": "${env:ProgramFiles(x86)}\\Citrix\\ICA Client\\wfcrun32.exe",
+        "wfica32": "${env:ProgramFiles(x86)}\\Citrix\\ICA Client\\WFICA32.exe"
+    },
+    // Define drive letter : UNC path mappings here:
+    "UNCPath": {
+        "H": "\\\\hcdata\\homes$\\gbci\\$env:USERNAME",
+        "I": "\\\\hcdata\\homes$\\gbci\\$env:USERNAME+2",
+        "R": "\\\\hcdata\\apps",
+        "S": "\\\\hcdata\\gbci\\shared\\it",
+        "X": "\\\\hcdata\\gbci\\shared",
+        "V": "\\\\$env:USERDNSDOMAIN\\SysVol\\$env:USERDNSDOMAIN\\scripts"
+    },
+	// per workspace / workplace calls (e.g starts and stops)
+    "configurations": [
+		{
+			"name": "PowerShell",
+			"type": "PowerShell",
+			"program": "DebugTest.ps1"
+		}
+	]
+}

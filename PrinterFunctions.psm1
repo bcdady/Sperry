@@ -1,4 +1,4 @@
-﻿#requires -Version 2 -Modules CimCmdlets, PSLogger
+﻿#requires -Version 2 -Modules CimCmdlets
 <#
 .SYNOPSIS
     PrinterFunctions Module contains functions that help make it easier to interact with printer ports via WMI (for backward compatibility).
