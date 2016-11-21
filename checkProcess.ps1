@@ -1,4 +1,4 @@
-#Requires -Version 2
+#Requires -Version 3
 <#
     .SYNOPSIS
         checkProcess.ps1 is designed to simplify process management for frequently used executables / applications.
@@ -23,14 +23,15 @@
         AUTHOR: Bryan Dady
         DATE: 11/25/09
         COMMENT: Shared script for controlling a common set of processes for various modes
-        : History - 2014 Jun 25 Added / updated Citrix knownPaths
-        : History - 2015 Mar 20 Moved Citrix knownPaths and related PNAgent.exe controll to StartXenApp.ps1, and incorporated both checkProcess.ps1 and StartXenApp.ps1 into the recently crafted Sperry Module for PowerShell
+        : History - 2014 Jun 25 : Added / updated Citrix knownPaths
+        : History - 2015 Mar 20 : Moved Citrix knownPaths and related PNAgent.exe controll to StartXenApp.ps1, and incorporated both checkProcess.ps1 and StartXenApp.ps1 into the Sperry Module for PowerShell
+        : History - 2016 Nov 13 : Replace knownpaths hashtable in this script with a reference to JSON objects defined in Sperry.json
     .Outputs
         Calls Write-Log.ps1 to write a progress log to the file system, as specified in the setup block of the script
 #>
 
 # Contains only filename.ext leaf; for full path and filename, use $PSCommandPath
-[bool]$prompt  = $false
+[bool]$script:interrupt  = $false
 
 # Setup necessary configs for PSLogger's Write-Log cmdlet
 [cmdletbinding(SupportsShouldProcess)]
@@ -38,37 +39,19 @@ $loggingPreference = 'Continue'
 
 # =======================================
 # Start with empty process arguments / parameters
-$CPargs   = ''
-# Define hash/associative array of known paths for executable files
+$script:CPargs   = ''
+# IMport / hash (associative array) of known paths for executable files
 # IMPORTANT: key needs to match executable name for STOP and Wait modes to work
 # NOTE: start arguments are added later so that the same key can be used for starting and stopping processes
-[hashtable]$knownPaths = @{
-    bttray         = "$env:ProgramFiles\WIDCOMM\Bluetooth Software\BTTray.exe"
-    chrome         = "$env:SystemDrive\SWTOOLS\PortableApps\GoogleChromePortable\App\Chrome-bin\chrome.exe"
-    concentr       = "${env:ProgramFiles(x86)}\Citrix\ICA Client\concentr.exe"
-    evernote       = "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Evernote\Evernote.lnk"
-    Firefox        = "$env:SystemDrive\SWTOOLS\\PortableApps\FirefoxPortable\FirefoxPortable.exe"
-    iexplore       = "$env:ProgramFiles\Internet Explorer\iexplore.exe"
-    katmouse       = "$env:ProgramFiles\KatMouse\KatMouse.exe"
-    msosync        = "$env:ProgramFiles\Microsoft Office\Office14\MSOSYNC.exe"
-    NitroPDFReader = "${env:ProgramFiles(x86)}\Nitro\Reader 3\NitroPDFReader.exe"
-    nsepa          = "$env:ProgramFiles\Citrix\Secure Access Client\nsepa.exe"
-    onenote        = "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Microsoft Office\Microsoft OneNote 2010.lnk"
-    outlook        = "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Microsoft Office\Microsoft Outlook 2010.lnk"
-    pnagent        = "${env:ProgramFiles(x86)}\Citrix\ICA Client\pnagent.exe"
-    pnamain        = "${env:ProgramFiles(x86)}\Citrix\ICA Client\pnamain.exe"
-    procexp        = "$env:SystemDrive\SWTOOLS\SysinternalsSuite\procexp64.exe"
-    puretext       = "$env:SystemDrive\SWTOOLS\Utilities\PureText.exe"
-    receiver       = "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Citrix\Receiver.lnk"
-    redirector     = "${env:ProgramFiles(x86)}\Citrix\ICA Client\redirector.exe"
-    ssonsvr        = "${env:ProgramFiles(x86)}\Citrix\ICA Client\ssonsvr.exe"
-    taskmgr        = "$env:SystemDrive\SWTOOLS\SysinternalsSuite\procexp.exe"
-    wfcrun32       = "${env:ProgramFiles(x86)}\Citrix\ICA Client\wfcrun32.exe"
-    wfica32        = "${env:ProgramFiles(x86)}\Citrix\ICA Client\WFICA32.exe"
-}
+
+$script:knownPaths = @{}
+$Settings.KnownProcess | ForEach-Object {
+    Write-Debug -Message "$($PSItem.Name) = $($ExecutionContext.InvokeCommand.ExpandString($PSItem.Path))"
+    $script:knownPaths.Add("$($PSItem.Name)",$ExecutionContext.InvokeCommand.ExpandString($PSItem.Path))
+    }
 
 # Predefine 'prompt-list' to control which processes invoke user approval and which ones terminate silently
-$askTerminate = @('receiver', 'outlook', 'iexplore', 'chrome', 'firefox')
+$script:askTerminate = @('receiver', 'outlook', 'iexplore', 'chrome', 'firefox')
 
 # Functions
 # =======================================
@@ -103,12 +86,12 @@ function Set-ProcessState
         Sperry
 #>
     Param (
-        [parameter(Position = 0,Mandatory = $true)]
+        [parameter(Position = 0)]
         [ValidateNotNullOrEmpty()]
         [String[]]
         $ProcessName,
 
-        [parameter(Position = 1,Mandatory = $true)]
+        [parameter(Position = 1)]
         [ValidateSet('Start', 'Stop')]
         [String[]]
         $Action,
@@ -118,21 +101,18 @@ function Set-ProcessState
         $ListAvailable
     )
 
-    begin {
+#    begin {
 
         if ($PSBoundParameters.ContainsKey('ListAvailable'))
         {
             Write-Log -Message "`nEnumerating all available `$XenApps Keys" -Function ProcessState -Verbose
-            $knownPaths |
-            Sort-Object -Property Name |
-            Format-Table -AutoSize
+            $script:knownPaths | Sort-Object -Property Name # | Format-Table -AutoSize
         } else {
-            $process = Get-Process -Name $ProcessName -ErrorAction:SilentlyContinue
+            $script:process = Get-Process -Name $ProcessName -ErrorAction:SilentlyContinue
         }
+#    }
 
-    }
-
-    process {  
+#    process {  
 
     switch ($Action) {
         'Start'
@@ -145,33 +125,32 @@ function Set-ProcessState
                     # specify unique launch/start parameters
                     switch ($ProcessName) {
                         'receiver' {
-                            $CPargs = '/startup'
+                            $script:CPargs = '/startup'
                         }
                         'concentr' {
-                            $CPargs = '/startup'
+                            $script:CPargs = '/startup'
                         }
                         'evernote' {
-                            $CPargs = '/minimized'
+                            $script:CPargs = '/minimized'
                         }
                         'taskmgr' {
-                            $CPargs = '/t'
+                            $script:CPargs = '/t'
+                        }
+                        'Brave' {
+                            $script:CPargs = '--processStart "Brave.exe"'
                         }
                         default {
-                            # pasing a 'space' should prevent Start-Process from freaking out about a null -ArgumentList, and hopefully not freak out the -FilePath exe
-                            $CPargs = ' '
+                            # passing a 'space' should prevent Start-Process from freaking out about a null -ArgumentList, and hopefully not freak out the -FilePath exe
+                            $script:CPargs = ' '
                         }
                     }
 
                     if ($PSCmdlet.ShouldProcess($ProcessName)) {
                         # launch process from known path, with specified argument(s)
-                        if (($CPargs | Measure-Object -Character).Characters -gt 1)
+                        if (($script:CPargs | Measure-Object -Character).Characters -gt 1)
                         {
-                            Write-Log -Message "Starting $ProcessName <$knownPaths[$ProcessName]> -ArgumentList $CPargs" -Function ProcessState
-                            Start-Process -FilePath $knownPaths[$($ProcessName)] -ArgumentList $CPargs -WindowStyle Minimized
-#                        } else {
-#                            # no ArgumentList
-#                            Write-Log -Message "Starting $ProcessName <$knownPaths[$ProcessName]>" -Function ProcessState
-#                            Start-Process -FilePath $knownPaths[$($ProcessName)] -WindowStyle Minimized
+                            Write-Log -Message "Starting $ProcessName $($knownPaths[$ProcessName]) -ArgumentList $script:CPargs" -Function ProcessState -Verbose
+                            Start-Process -FilePath $($knownPaths[$($ProcessName)]) -ArgumentList $script:CPargs -WindowStyle Minimized
                         }
                     } else {  
                         Write-Output -InputObject "What if: Performing the operation ""Start-Process"" on target ""$knownPaths[$ProcessName]"" with -ArgumentList ""$CPargs"" for key ($ProcessName)."
@@ -179,8 +158,8 @@ function Set-ProcessState
                 } else {
                     Write-Log -Message "Path to launch '$ProcessName' is undefined" -Function ProcessState  -Verbose
                 }
-            }
-        }
+            } # end if (!($?))
+        } # end 'Start'
         'Stop'
         {
             if ($?)
@@ -190,22 +169,22 @@ function Set-ProcessState
                 {
                     # processName is running, prompt to close
                     Write-Log -Message "$ProcessName is running."
-                    $confirm = Read-Host -Prompt "`n # ACTION REQUIRED # `nClose $ProcessName, then type ok and click [Enter] to proceed.`n"
-                    while (!($prompt ))
+                    $script:confirm = Read-Host -Prompt "`n # ACTION REQUIRED # `nClose $ProcessName, then type ok and click [Enter] to proceed.`n"
+                    while ( -not ($script:interrupt ))
                     {
-                        if($confirm -ilike 'ok')
+                        if($script:confirm -ilike 'ok')
                         {
-                            $prompt = $true
+                            $script:interrupt = $true
                         } else {
-                            Write-Log -Message "Invalid response '$confirm'" -Function ProcessState  -Verbose
-                            $confirm = Read-Host -Prompt "`n # ACTION REQUIRED # `nType ok and click [Enter] once $ProcessName is terminated."
+                            Write-Log -Message "Invalid response '$script:confirm'" -Function ProcessState  -Verbose
+                            $script:confirm = Read-Host -Prompt "`n # ACTION REQUIRED # `nType ok and click [Enter] once $ProcessName is terminated."
                         }
                     }
                     Start-Sleep -Seconds 1
                     # wait one second to allow time for $process to stop
                     # Check if the process was stopped after we asked
-                    $process = Get-Process -Name $ProcessName -ErrorAction:SilentlyContinue
-                    while ($process)
+                    $script:process = Get-Process -Name $ProcessName -ErrorAction:SilentlyContinue
+                    while ($script:process)
                     {
                         # Application/process is still running, prompt to terminate
                         Write-Log -Message "$ProcessName is still running." -Function ProcessState  -Verbose
@@ -238,11 +217,11 @@ function Set-ProcessState
                                 }
                             }
                             # if no Citrix Special handling is needed, then we stop the process
-                            $process | ForEach-Object -Process {
-                                Write-Log -Message "Stop-Process $($PSItem.ProcessName) (ID $($process.id))" -Function ProcessState
+                            $script:process | ForEach-Object -Process {
+                                Write-Log -Message "Stop-Process $($PSItem.ProcessName) (ID $($script:process.id))" -Function ProcessState
                                 if ($PSCmdlet.ShouldProcess($ProcessName))
                                 {
-                                    Stop-Process -Id $process.id
+                                    Stop-Process -Id $script:process.id
                                 }
                                 else
                                 {
@@ -258,11 +237,11 @@ function Set-ProcessState
                             Write-Log -Message "Invalid response '$response'." -Function ProcessState  -Path - verbose
                         }
                         # confirm process is terminated
-                        $process = Get-Process -Name $ProcessName -ErrorAction:SilentlyContinue
+                        $script:process = Get-Process -Name $ProcessName -ErrorAction:SilentlyContinue
                     }
                 } else {
                     # kill the process
-                    $process | ForEach-Object -Process {
+                    $script:process | ForEach-Object -Process {
                         Write-Log -Message "Stop-Process $($PSItem.ProcessName) (ID $($process.id))" -Function ProcessState
                         if ($PSCmdlet.ShouldProcess($ProcessName))
                         {
@@ -277,15 +256,67 @@ function Set-ProcessState
             }
         }
     }
-    }
 }
 
 function Test-ProcessState
 {
+  <#
+      .SYNOPSIS
+        A wrapper/helper function for get-process cmdlet interaction.
+      .DESCRIPTION
+        Using the ProcessName parameter, looks for a match in the results from get-process, and responds with some of the details/properties from get-process about the matching processes
+      .PARAMETER processName
+        Name of process to check for, start up, or stop
+      .PARAMETER Wait
+        An optional boolean property to specify whether to continue checking periodically if processName is still running
+        This is intended to be useful for scenarios where next steps should be delayed until a named process has exited
+      .PARAMETER WaitTime
+        An optional integer property to specify amount of time (in milliseconds) to wait between recurring invocation of get-process
+        The default value is 50 milliseconds
+      .EXAMPLE
+        PS .\> Test-ProcessState powershell | fl
+       
+        Path    : C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+        Name    : powershell
+        Status  : Running
+        WaitFor : False
+
+        Path    : C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+        Name    : powershell
+        Status  : Running
+        WaitFor : False
+
+        Check / confirms that one or more instances of powershell.exe are running, and shows some of their key stats via format-list (alias fl)
+
+      .EXAMPLE
+        PS .\> Test-ProcessState -ProcessName notepad -Wait
+
+        Wait for all running instances of notepad to stop
+        Since no processes of notepad were found in get-process results, there is no output
+      .EXAMPLE
+        PS .\> [bool](Test-ProcessState -ProcessName iexplore)
+
+        True
+
+        Returns a simple True/False answer to the question of whether or not any processes are running with a name matching *iexplore*
+
+      .NOTES
+        NAME        :  Test-ProcessState
+        VERSION     :  2.1.2
+        LAST UPDATED:  6/10/2015
+        AUTHOR      :  Bryan Dady
+      .LINK
+        PSLogger
+        Sperry
+  #>
     # Setup Advanced Function Parameters
     [cmdletbinding()]
     Param (
-        [parameter(Position = 0,Mandatory = $true)]
+        [parameter(
+          Position = 0,
+          Mandatory,
+          HelpMessage='Specify the name of the process to check is running'
+        )]
         [ValidateNotNullOrEmpty()]
         [String[]]
         $ProcessName,
@@ -297,11 +328,7 @@ function Test-ProcessState
         [Parameter(Position = 2)]
         [Alias('Delay')]
         [int16]
-        $WaitTime = 50,
-
-        [Parameter(Position = 3)]
-        [switch]
-        $ListAvailable
+        $WaitTime = 50
     )
 
     if ($PSBoundParameters.ContainsKey('ListAvailable'))
@@ -321,20 +348,20 @@ function Test-ProcessState
         # Check if $ProcessName is running
         Write-Log -Message "Checking if $ProcessName is running" -Function ProcessState
         Start-Sleep -Milliseconds 500
-        $process = Get-Process -Name $ProcessName -ErrorAction SilentlyContinue
+        $script:process = Get-Process -Name $ProcessName -ErrorAction SilentlyContinue
         if ($Wait)
         {
             #Setup variables for the following nested while loops
-            [int16]$Private:InnerCounter = 0 # Start from zero
-            [int16]$Private:OuterCounter = 0 # Start from zero
-            while ($process)
+            [int16]$script:InnerCounter = 0 # Start from zero
+            [int16]$script:OuterCounter = 0 # Start from zero
+            while ($script:process)
             {
                 # it appears to be running; let's wait for it
                 Write-Log -Message "Found $ProcessName running. Wait parameter is True and delay duraction is $WaitTime milliseconds" -Function ProcessState
 
                 $InnerCounter = 0 # re-start from zero
                 # Let's increment up to 100 (%) progress while we wait
-                [Int]$Private:LoopCount = 100
+                [Int]$script:LoopCount = 100
 
                 # Loop through write-progress as long as the counter is less than $WaitTime
                 while ($InnerCounter -lt $LoopCount) {
@@ -358,27 +385,27 @@ function Test-ProcessState
                 Write-Log -Message "   still waiting for $ProcessName : ($WaitTime)" -Function ProcessState  -Verbose
                 Write-Debug -Message "   still waiting for $ProcessName : [`$InnerCounter: $InnerCounter ; `$OuterCounter: $OuterCounter ; `$waitTime: $WaitTime ]"
                 # check again
-                $process = Get-Process -Name $ProcessName -ErrorAction:SilentlyContinue
+                $script:process = Get-Process -Name $ProcessName -ErrorAction SilentlyContinue
             }
             Write-Progress -Activity "Waiting for $ProcessName" -Status '.' -Completed
         } else {
-            if ($process)
+            if ($script:process)
             {
                 # it appears to be running
                 # Similar to: Get-Process -ProcessName *7z* | Select-Object -Property Name,Path | Format-Table -AutoSize
-                $process | ForEach-Object -Process {
+                $script:process | ForEach-Object -Process {
                     #'Optimize New-Object invocation, based on Don Jones' recommendation: https://technet.microsoft.com/en-us/magazine/hh750381.aspx
-                    $Private:properties = @{
+                    $script:properties = @{
                         'Name'=$PSItem.Name
                         'Path'=$PSItem.Path
                         'Status'='Running'
                         'WaitFor'=$false
                     }
-                    $Private:RetObject = New-Object -TypeName PSObject -Prop $Private:properties
-                    return $Private:RetObject
+                    $script:RetObject = New-Object -TypeName PSObject -Prop $script:properties
+                    return $script:RetObject
                 } # end of foreach
 
-                Write-Log -Message "Confirmed $ProcessName is running. Wait parameter is False." -Function ProcessState  -Verbose
+                Write-Log -Message "Confirmed $ProcessName is running. Wait parameter is False." -Function ProcessState
             } else {
                 Write-Log -Message "$ProcessName was NOT found running." -Function ProcessState
                 return $false

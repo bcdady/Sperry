@@ -11,6 +11,7 @@
 # Define new global variable for default printer
 New-Variable -Name DefaultPrinter -Description 'Default Printer' -Scope Global -ErrorAction Ignore
 
+Write-Verbose -Message 'Declaring function Get-Printer'
 function Get-Printer {
 <#
 	.Synopsis
@@ -82,6 +83,7 @@ function Get-Printer {
 
 #>
 
+Write-Verbose -Message 'Declaring function Set-Printer'
 function Set-Printer  {
 <#
 	.SYNOPSIS
@@ -106,4 +108,4 @@ function Set-Printer  {
     return (Get-WmiObject -Class win32_printer -Filter "ShareName='$printerShareName'").SetDefaultPrinter()
 }
 
-Export-ModuleMember -Function Get-Printer, Set-Printer -Variable DefaultPrinter
+#Export-ModuleMember -Function Get-Printer, Set-Printer -Variable DefaultPrinter

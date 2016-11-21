@@ -1,29 +1,5 @@
 ﻿#Requires -Version 2
 
-# Predefine XenApp Qlaunch arguments for running Citrix [pnagent] applications
-# By Predefining at the script scope, we can evaluate parameters using ValidateScript against this hashtable
-$Script:XenApps = @{
-    Assyst       = 'GBCI02XA:Assyst'
-    Communicator = 'GBCI02XA:Office Communicator'
-    cmd          = 'GBCI02XA:Command Line'
-    OCS          = 'GBCI02XA:Office Communicator'
-    Excel        = 'GBCI02XA:Microsoft Excel 2010'
-    H_Drive      = 'GBCI02XA:H Drive'
-    IE           = 'GBCI02XA:Internet Explorer'
-    IE_11        = 'GBCI02XA:Internet Explorer 11'
-    ITSC         = 'GBCI02XA:IT Service Center'
-    MSTSC        = 'GBCI02XA:RDP Client'
-    OneNote      = 'GBCI02XA:Microsoft OneNote 2010'
-    Outlook      = 'GBCI02XA:Microsoft Outlook 2010'
-    PowerPoint   = 'GBCI02XA:Microsoft Powerpoint 2010'
-    PrinterList  = 'GBCI02XA:Printer List5257'
-    RDP          = 'GBCI02XA:RDP Client'
-    S_Drive      = 'GBCI02XA:S Drive'
-    Synergy      = 'GBCI02XA:Synergy User Client'
-    Word         = 'GBCI02XA:Microsoft Word 2010'
-    visio        = 'GBCI02XA:Microsoft Visio 2013'
-}
-
 function Start-XenApp
 {
 <#
@@ -59,38 +35,35 @@ function Start-XenApp
     #    [OutputType([int])]
     Param (
         # PNArgs specifies whether PNAgent.exe should attempt to reconnect an existing session, Qlaunch a new app, or other supported behavior
-        [Parameter(Mandatory = $false,
-                ValueFromPipeline = $false,
-                ValueFromPipelineByPropertyName = $false,
-                ValueFromRemainingArguments = $false,
-                Position = 0,
-                ParameterSetName = 'Mode'
+        [Parameter(
+            Position = 0,
+            ParameterSetName = 'Mode'
 		)]
         [Alias('args','XenApp','launch','start','open')]
         [String]
         $Qlaunch = '-ListAvailable',
 
-        [Parameter(Mandatory = $false,
-                Position = 3,
-                ParameterSetName = 'Launch'
+        [Parameter(
+            Position = 3,
+            ParameterSetName = 'Launch'
 		)]
         [ValidateNotNullOrEmpty()]
         [Alias('connect')]
         [switch]
         $Reconnect,
 
-        [Parameter(Mandatory = $false,
-                Position = 1,
-                ParameterSetName = 'Mode'
+        [Parameter(
+            Position = 1,
+            ParameterSetName = 'Mode'
 		)]
         [ValidateNotNullOrEmpty()]
         [Alias('end', 'close', 'halt', 'exit', 'stop')]
         [switch]
         $Terminatewait,
 
-        [Parameter(Mandatory = $false,
-                Position = 2,
-                ParameterSetName = 'Mode'
+        [Parameter(
+            Position = 2,
+            ParameterSetName = 'Mode'
 		)]
         [ValidateNotNullOrEmpty()]
         [Alias('list', 'show', 'enumerate')]
@@ -101,15 +74,31 @@ function Start-XenApp
 
     # Set pnagent path string
     $Global:pnagent = "${env:ProgramFiles(x86)}\Citrix\ICA Client\pnagent.exe"
-
     Show-Progress -msgAction Start -msgSource $PSCmdlet.MyInvocation.MyCommand.Name
+
+    # Load up $Setting.XenApp from sperry.json into Script scope $XenApps hashtable
+    $Script:XenApps = @{}
+
+    if ([bool]$($Settings.XenApp))
+    {
+        $Settings.XenApp | ForEach-Object {
+            Write-Debug -Message "$($PSItem.Name) = $($ExecutionContext.InvokeCommand.ExpandString($PSItem.Qlaunch))"
+            $script:XenApps.Add("$($PSItem.Name)",$ExecutionContext.InvokeCommand.ExpandString($PSItem.Qlaunch))
+        }
+    }
+    else
+    {
+        throw "Unable to load global settings from `$Settings object. Perhaps there was an error loading from sperry.json."
+    }
 
     if ($PSBoundParameters.ContainsKey('Qlaunch'))
     {
         if ($XenApps.Keys -contains $Qlaunch)
         {
             $Private:Arguments = '/CitrixShortcut: (1)', "/QLaunch ""$($XenApps.$Qlaunch)"""
-        } else {
+        }
+        else
+        {
             # if a shortcut key is not defined in $XenApps, pass the full 'string' e.g. GBCI02XA:Internet Explorer
             $Private:Arguments = '/CitrixShortcut: (1)', '/QLaunch', """GBCI02XA:$Qlaunch"""
             # possible RFE: enhance string whitespace handling of $Qlaunch
@@ -160,37 +149,3 @@ function Start-XenApp
 
     Show-Progress -msgAction Stop -msgSource $PSCmdlet.MyInvocation.MyCommand.Name
 }
-
-<#
-function Enter-XASession {
-    # For automating user session setup / maintenance tasks from within Citrix XenApp context Sync
-    # files Write-Log -Message 'Running Profile-Sync' -Function $MyInvocation.MyCommand.Name -verbose;
-    # ** replace with direct access to the function via inclusion of the ps1 file in this Sperry module
-    # *** First the Profile-Sync function(s) need to be cleaned up and modularized
-    #
-	# Write-Log -Message 'Done with Profile-Sync' -Function $MyInvocation.MyCommand.Name;
-
-    # Check default printer name, and re-set if necessary
-    # ** RFE enhance to ask for printer name, select from list based on current IP
-    # Get-Printer -Network
-    if ($env:ComputerName -ne 'GC91IT78') {
-        # set default printer based on IP address ranges for common IT locations
-        switch (get-IPaddress) {
-            '10.10.*' { }
-            '10.20.*' { }
-            '10.100.91*' { }
-            '10.100.92*' { 
-                # XenApp Session
-                Write-Log -Message 'Set Default network printer to GBCI92_IT252' -Function $MyInvocation.MyCommand.Name
-                if ((Get-Printer -Default).Name -ne 'GBCI92_IT252') {
-                    Set-Printer -printerShareName GBCI92_IT252
-                }
-            }
-        }
-    # XenApp Session
-    Write-Log -Message 'Set Default network printer to GBCI91_IT252' -Function $MyInvocation.MyCommand.Name;
-    if ((Get-Printer -Default).Name -ne 'GBCI91_IT252') {
-        Set-Printer -printerShareName GBCI91_IT252
-    }
-}
-#>

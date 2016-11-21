@@ -17,6 +17,7 @@
         AUTHOR      :  Bryan Dady
 #>
 
+Write-Verbose -Message 'Defining function Get-IECookie'
 function Get-IECookie
 {
     param (
@@ -51,6 +52,7 @@ function Get-IECookie
 
 # *** RFE : only process unique file paths. Currently 
 
+Write-Verbose -Message 'Defining function Clear-IECookie'
 function Clear-IECookie
 {
     param (

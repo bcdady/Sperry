@@ -1,6 +1,6 @@
 #requires -Version 2
 <#
-    .SYNOPSIS 
+    .SYNOPSIS
         Shows a graphical message box, with various prompt types available.
 
     .DESCRIPTION
@@ -8,19 +8,19 @@
 
     .INPUTS
         The parameters are:-
-            
-        Prompt (mandatory): 
+
+        Prompt (mandatory):
         Text string that you wish to display
-                
+
         Title (optional):
         The title that appears on the message box
-                
+
         Icon (optional).  Available options are:
         Information, Question, Critical, Exclamation (not case sensitive)
-               
+
         BoxType (optional). Available options are:
         OKOnly, OkCancel, AbortRetryIgnore, YesNoCancel, YesNo, RetryCancel (not case sensitive)
-                
+
         DefaultButton (optional). Available options are:
         1, 2, 3
 
@@ -40,7 +40,7 @@
 
     .LINK
         http://msdn.microsoft.com/en-us/library/microsoft.visualbasic.msgboxresult.aspx
-			
+
     .LINK
         http://msdn.microsoft.com/en-us/library/microsoft.visualbasic.msgboxstyle.aspx
     .NOTES
@@ -48,6 +48,7 @@
         http://social.technet.microsoft.com/profile/bigteddy/.
 #>
 
+Write-Verbose -Message 'Declaring function Show-MsgBox'
 function Show-MsgBox
 {
 <#
@@ -58,18 +59,18 @@ function Show-MsgBox
 
 .PARAMETER Message
     Text string that you wish to display in the message (dialog) box windows
-                
+
 .PARAMETER Title
     The title that appears on the message box
-                
+
 .PARAMETER Icon
     Available options are:
     Information, Question, Critical, Exclamation (not case sensitive)
-               
+
 .PARAMETER BoxType
     Available options are:
     OKOnly, OkCancel, AbortRetryIgnore, YesNoCancel, YesNo, RetryCancel (not case sensitive)
-                
+
     DefaultButton (optional). Available options are:
     1, 2, 3
 
@@ -84,7 +85,7 @@ function Show-MsgBox
     NAME        :  Show-MsgBox
     CREATED     :  August 24, 2011
     AUTHOR      :  BigTeddy (http://social.technet.microsoft.com/profile/bigteddy/)
-    VERSION     :  1.1.0   
+    VERSION     :  1.1.0
     LAST UPDATED:  12/3/2015
     BY (EDITOR) :  Bryan Dady (@bcdady)
 .LINK
@@ -96,7 +97,8 @@ function Show-MsgBox
 INPUTS
 .OUTPUTS
 OUTPUTS
-#>    [CmdletBinding()]
+#>
+    [CmdletBinding()]
     param(
         [Parameter(Position = 0, Mandatory = $true)] [string]$Message,
         [Parameter(Position = 1, Mandatory = $false)] [string]$Title = '',
@@ -106,59 +108,59 @@ OUTPUTS
     )
     $null = [System.Reflection.Assembly]::LoadWithPartialName('Microsoft.VisualBasic')
     switch ($Icon) {
-        'Question' 
+        'Question'
         {
-            $vb_icon = [microsoft.visualbasic.msgboxstyle]::Question 
+            $vb_icon = [microsoft.visualbasic.msgboxstyle]::Question
         }
-        'Critical' 
+        'Critical'
         {
             $vb_icon = [microsoft.visualbasic.msgboxstyle]::Critical
         }
-        'Exclamation' 
+        'Exclamation'
         {
             $vb_icon = [microsoft.visualbasic.msgboxstyle]::Exclamation
         }
-        'Information' 
+        'Information'
         {
             $vb_icon = [microsoft.visualbasic.msgboxstyle]::Information
         }
     }
     switch ($BoxType) {
-        'OKOnly' 
+        'OKOnly'
         {
             $vb_box = [microsoft.visualbasic.msgboxstyle]::OKOnly
         }
-        'OKCancel' 
+        'OKCancel'
         {
             $vb_box = [microsoft.visualbasic.msgboxstyle]::OkCancel
         }
-        'AbortRetryIgnore' 
+        'AbortRetryIgnore'
         {
             $vb_box = [microsoft.visualbasic.msgboxstyle]::AbortRetryIgnore
         }
-        'YesNoCancel' 
+        'YesNoCancel'
         {
             $vb_box = [microsoft.visualbasic.msgboxstyle]::YesNoCancel
         }
-        'YesNo' 
+        'YesNo'
         {
             $vb_box = [microsoft.visualbasic.msgboxstyle]::YesNo
         }
-        'RetryCancel' 
+        'RetryCancel'
         {
             $vb_box = [microsoft.visualbasic.msgboxstyle]::RetryCancel
         }
     }
     switch ($DefaultButton) {
-        1 
+        1
         {
             $vb_defaultbutton = [microsoft.visualbasic.msgboxstyle]::DefaultButton1
         }
-        2 
+        2
         {
             $vb_defaultbutton = [microsoft.visualbasic.msgboxstyle]::DefaultButton2
         }
-        3 
+        3
         {
             $vb_defaultbutton = [microsoft.visualbasic.msgboxstyle]::DefaultButton3
         }
@@ -166,4 +168,5 @@ OUTPUTS
     $popuptype = $vb_icon -bor $vb_box -bor $vb_defaultbutton
     $ans = [Microsoft.VisualBasic.Interaction]::MsgBox($Message,$popuptype,$Title)
     return $ans
+
 } #end function
