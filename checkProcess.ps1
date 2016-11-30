@@ -1,4 +1,5 @@
-#Requires -Version 3
+#!/usr/local/bin/powershell
+#Requires -Version 3 -Module PSLogger
 <#
     .SYNOPSIS
         checkProcess.ps1 is designed to simplify process management for frequently used executables / applications.
@@ -37,22 +38,6 @@
 [cmdletbinding(SupportsShouldProcess)]
 $loggingPreference = 'Continue'
 
-# =======================================
-# Start with empty process arguments / parameters
-$script:CPargs   = ''
-# IMport / hash (associative array) of known paths for executable files
-# IMPORTANT: key needs to match executable name for STOP and Wait modes to work
-# NOTE: start arguments are added later so that the same key can be used for starting and stopping processes
-
-$script:knownPaths = @{}
-$Settings.KnownProcess | ForEach-Object {
-    Write-Debug -Message "$($PSItem.Name) = $($ExecutionContext.InvokeCommand.ExpandString($PSItem.Path))"
-    $script:knownPaths.Add("$($PSItem.Name)",$ExecutionContext.InvokeCommand.ExpandString($PSItem.Path))
-    }
-
-# Predefine 'prompt-list' to control which processes invoke user approval and which ones terminate silently
-$script:askTerminate = @('receiver', 'outlook', 'iexplore', 'chrome', 'firefox')
-
 # Functions
 # =======================================
 # checkProcess([Process Name], [Start|Stop])
@@ -88,12 +73,12 @@ function Set-ProcessState
     Param (
         [parameter(Position = 0)]
         [ValidateNotNullOrEmpty()]
-        [String[]]
+        [String]
         $ProcessName,
 
         [parameter(Position = 1)]
         [ValidateSet('Start', 'Stop')]
-        [String[]]
+        [String]
         $Action,
 
         [Parameter(Position = 2)]
@@ -102,14 +87,30 @@ function Set-ProcessState
     )
 
 #    begin {
+    # =======================================
+    # Start with empty process arguments / parameters
+    $script:CPargs   = ''
+    # Import hashtable (associative array) of known paths for executable files
+    # IMPORTANT: key needs to match executable name for STOP and Wait modes to work
+    # NOTE: start arguments are added later so that the same key can be used for starting and stopping processes
 
-        if ($PSBoundParameters.ContainsKey('ListAvailable'))
-        {
-            Write-Log -Message "`nEnumerating all available `$XenApps Keys" -Function ProcessState -Verbose
-            $script:knownPaths | Sort-Object -Property Name # | Format-Table -AutoSize
-        } else {
-            $script:process = Get-Process -Name $ProcessName -ErrorAction:SilentlyContinue
-        }
+    Import-Settings
+    $script:knownPaths = @{}
+    $Settings.KnownProcess | ForEach-Object {
+        Write-Debug -Message "$($PSItem.Name) = $($ExecutionContext.InvokeCommand.ExpandString($PSItem.Path))"
+        $script:knownPaths.Add("$($PSItem.Name)",$ExecutionContext.InvokeCommand.ExpandString($PSItem.Path))
+    }
+
+    # Predefine 'prompt-list' to control which processes invoke user approval and which ones terminate silently
+    $script:askTerminate = @('receiver', 'outlook', 'iexplore', 'brave', 'code', 'chrome', 'firefox')
+
+    if ($PSBoundParameters.ContainsKey('ListAvailable'))
+    {
+        Write-Log -Message "Enumerating all available `$XenApps Keys" -Function ProcessState
+        $script:knownPaths | Sort-Object -Property Name # | Format-Table -AutoSize
+    } else {
+        $script:process = Get-Process -Name $ProcessName -ErrorAction:SilentlyContinue
+    }
 #    }
 
 #    process {  
@@ -149,8 +150,15 @@ function Set-ProcessState
                         # launch process from known path, with specified argument(s)
                         if (($script:CPargs | Measure-Object -Character).Characters -gt 1)
                         {
-                            Write-Log -Message "Starting $ProcessName $($knownPaths[$ProcessName]) -ArgumentList $script:CPargs" -Function ProcessState -Verbose
+                            Write-Log -Message "Starting $ProcessName $($knownPaths[$ProcessName]) -ArgumentList $script:CPargs" -Function ProcessState
+                            Write-Verbose -Message "Starting $ProcessName $($knownPaths[$ProcessName]) -ArgumentList $script:CPargs"
                             Start-Process -FilePath $($knownPaths[$($ProcessName)]) -ArgumentList $script:CPargs -WindowStyle Minimized
+                        }
+                        else
+                        {
+                            Write-Log -Message "Starting $ProcessName $($knownPaths[$ProcessName])" -Function ProcessState
+                            Write-Verbose -Message "Starting $ProcessName $($knownPaths[$ProcessName])"
+                            Start-Process -FilePath $($knownPaths[$($ProcessName)]) -WindowStyle Minimized
                         }
                     } else {  
                         Write-Output -InputObject "What if: Performing the operation ""Start-Process"" on target ""$knownPaths[$ProcessName]"" with -ArgumentList ""$CPargs"" for key ($ProcessName)."

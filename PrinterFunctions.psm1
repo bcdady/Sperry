@@ -80,10 +80,9 @@ function Get-Printer {
         CapabilityDescriptions : {Copies, Color, Duplex, Collate}
         DriverName             : TP Output Gateway
         ServerName             : \\gbci02ps02
-
 #>
 
-Write-Verbose -Message 'Declaring function Set-Printer'
+Write-Verbose -Message 'Declaring Function Set-Printer'
 function Set-Printer  {
 <#
 	.SYNOPSIS
@@ -101,6 +100,7 @@ function Set-Printer  {
 		LAST UPDATED:  3/30/2015
 		AUTHOR      :  Bryan Dady
 #>
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [String]
         $printerShareName

@@ -1,4 +1,3 @@
-
 # https://powershell.org/forums/topic/retrieving-process-list-and-owner-name/
 # how to use from another script/function:
 # foreach ($app in $workApps) {Get-ProcessbyUser -name $app*}
@@ -80,7 +79,7 @@ function Get-ProcessByUser {
     # Pre-define return object
     #$properties = @{}
     $script:RetObject = New-Object -TypeName PSObject
-    $Global:RetCollection = @()
+    $Script:RetCollection = @()
     $script:ProgressCounter = 0
 
     Write-Debug -Message "`$Processes: $($Processes.Name | Select-Object -First 10) ..."
@@ -89,10 +88,10 @@ function Get-ProcessByUser {
         Write-Debug -Message "Write-Progress -Activity 'Get-ProcessInfo' -PercentComplete ($ProgressCounter/$($Processes.Count)) :: $($ProgressCounter/$($Processes.Count)) -CurrentOperation $($Process.Name)"
         Write-Progress -Activity 'Get-ProcessInfo' -PercentComplete $([int]($ProgressCounter/($Processes.Count))*100) -CurrentOperation $Process.Name
         $ProgressCounter++
+        # $Process | get-member -membertype properties
         Write-Debug -Message "Get `$ProcessOwner for $($Process.Name)"
-        $ErrorActionPreference = 'SilentlyContinue'
+        #$ErrorActionPreference = 'SilentlyContinue'
         $script:ProcessOwner = $Process.getowner().User
-        $ErrorActionPreference = 'Stop' 
         if ($null -eq $ProcessOwner)
         {
             $script:ProcessOwner = 'Unknown'    
@@ -100,8 +99,19 @@ function Get-ProcessByUser {
          
         if ($ProcessOwner -like "*$UserName*")
         {
+            $AppendApp = $false
             # Check if $Process.Name exists in $RetCollection, and if so, append this ProcessID, instead of adding redundant object instance
-            if ($Process.Name -in $Global:RetCollection.Name)
+            # "if ($($Process.Name) -in $($Script:RetCollection.Name)"
+            try {
+                if ($Process.Name -in $Script:RetCollection.Name)
+                {
+                    $AppendApp = $true
+                }    
+            }
+            catch {
+                Write-Verbose -Message "There was an unexpected exception comparing the current process name with the process collection"
+            }
+            if ($AppendApp)
             {
                 Write-Debug -Message "Adding new PID to existing Process object: $($Process.Name) :: $($Process.ProcessID)"
                 
@@ -155,6 +165,7 @@ function Get-ProcessByUser {
                 # Append the current object instance to the collection of objects to be returned
                 $script:RetCollection += $script:RetObject
             }
+            $ErrorActionPreference = 'Stop' 
             # Empty the variable of any current object prior to moving on
             Remove-Variable -Name RetObject -Scope Script -Force -ErrorAction Ignore
         }

@@ -1,7 +1,7 @@
 {
     "json_description": "User costumizations for PowerShell Sperry module.",
-    "version": "0.1.5",
-	"updated": "11-11-2016",
+    "version": "0.1.6",
+	"updated": "11-21-2016",
     "XenApp": [
         {"Name":"Assyst","QLaunch":"GBCI02XA:Assyst"},
         {"Name":"cmd","QLaunch":"GBCI02XA:Command Line"},
@@ -23,7 +23,8 @@
     ],
     "KnownProcess": [
         {"Name":"Brave","Path":"$env:LOCALAPPDATA\\brave\\Update.exe"},
-        {"Name":"CodeInsider","Path":"$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Visual Studio Code - Insiders\\Visual Studio Code - Insiders.lnk"},
+        {"Name":"CodeInsider","Path":"${env:ProgramFiles(x86)}\\Microsoft VS Code Insiders\\bin\\code-insiders.cmd"},
+        {"Name":"GitHub","Path":"$env:APPDATA\\Microsoft\\Windows\\Start Menu\\Programs\\GitHub, Inc\\GitHub.appref-ms"},
         {"Name":"iexplore","Path":"$env:ProgramFiles\\Internet Explorer\\iexplore.exe"},
         {"Name":"onenote","Path":"$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Microsoft Office\\Microsoft OneNote 2010.lnk"},
         {"Name":"outlook","Path":"$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Microsoft Office\\Microsoft Outlook 2010.lnk"},
@@ -48,7 +49,7 @@
 		{
 			"name": "PowerShell",
 			"type": "PowerShell",
-			"program": "DebugTest.ps1"
+			"program": "Sperry.psm1"
 		}
 	]
 }

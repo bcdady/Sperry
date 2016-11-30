@@ -1,5 +1,5 @@
 #!/usr/local/bin/powershell
-#Requires -Version 3.0
+#Requires -Version 3
 # Set-StrictMode -Version Latest # enforces coding rules in expressions, scripts, and script blocks based on latest available rules
 <#
     .SYNOPSIS
@@ -25,17 +25,9 @@ Write-Output -InputObject 'Importing shared saved state info from Microsoft.Powe
 try {
     $Global:PSState = (Get-Content -Path $env:ProgramFiles\WindowsPowerShell\Microsoft.PowerShell_state.json) -join "`n" | ConvertFrom-Json
 }
-catch [System.Exception] {
+catch {
     Write-Warning -Message "Critical Error loading PowerShell saved state info from $env:ProgramFiles\WindowsPowerShell\Microsoft.PowerShell_state.json to custom object: `$PSState"
-}
-    
-Write-Output -InputObject 'Importing Sperry configs'
-try {
-    $Global:Settings = (Get-Content -Path (join-path -Path (Split-Path -Path $MyInvocation.MyCommand.Path -Parent) -ChildPath Sperry.json)) -join "`n" | ConvertFrom-Json
-}
-catch [System.Exception] {
-    throw 'Critical Error loading settings from from Sperry.json'
-}
+}   
 
 if ((Get-WmiObject -Class Win32_OperatingSystem -Property Caption).Caption -like '*Windows Server*')
 {
@@ -49,17 +41,33 @@ else
 # Functions
 #========================================
 # FYI this same function is also globally defined in ProfilePal module
-Function global:Test-LocalAdmin() {
+Function global:Test-LocalAdmin {
     Return ([security.principal.windowsprincipal] [security.principal.windowsidentity]::GetCurrent()).isinrole([Security.Principal.WindowsBuiltInRole] 'Administrator')
 }
 
-Function Show-Settings() {
-    $Settings
+Function Import-Settings {
+    Write-Debug -Message "`$Global:Settings = (Get-Content -Path $(join-path -Path $(Split-Path -Path $((Get-PSCallStack).ScriptName | Sort-Object -Unique) -Parent) -ChildPath 'Sperry.json')) -join ""``n"" | ConvertFrom-Json"
+    try {
+        $Global:Settings = (Get-Content -Path $(join-path -Path $(Split-Path -Path $PSCommandPath -Parent) -ChildPath 'Sperry.json')) -join "`n" | ConvertFrom-Json
+        Write-Verbose -Message 'Settings imported. Run Show-Settings to see details.' 
+    }
+    catch {
+        write-warning 'Critical Error loading settings from from sperry.json'
+    }
+}
+
+Write-Output -InputObject 'Import $Sperry configs'
+Import-Settings
+
+Function Show-Settings {
+    param ()
+    Write-Output -InputObject $Global:Settings
 }
 
 function Set-DriveMaps {
+    [CmdletBinding(SupportsShouldProcess)]
     param ()
-    Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name; # Log start time stamp
+    Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name # Log start time stamp
 
     # $AllDrives = 1 (true) means map all drives; 0 (false) means only map H: and S:
     Write-Log -Message 'Mapping Network Drives' -Function $MyInvocation.MyCommand.Name -Verbose
@@ -67,7 +75,7 @@ function Set-DriveMaps {
 
     # Read in UNC path / drive letter mappings from sperry.json : Sperry.uncPaths
     # loop through all defined drive mappings
-    $Settings.UNCPath | ForEach-Object {
+    $Global:Settings.UNCPath | ForEach-Object {
         $DriveName = $ExecutionContext.InvokeCommand.ExpandString($PSItem.DriveName)
         $UNCroot   = $ExecutionContext.InvokeCommand.ExpandString($PSItem.FullPath)
         if ( (-not (Test-Path "$DriveName`:\") -and (Test-Path $UNCroot))) {
@@ -81,12 +89,12 @@ function Set-DriveMaps {
             Write-Warning -Message "Drive letter $DriveName already in use, or path $UNCroot was not found."
         }
     }
-    Show-Progress -msgAction 'Stop' -msgSource $MyInvocation.MyCommand.Name; # Log end time stamp
+    Show-Progress -msgAction 'Stop' -msgSource $MyInvocation.MyCommand.Name # Log end time stamp
 }
 
 # Define Get-DriveMaps function
 function Get-DriveMaps {
-    Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name; # Log start time stamp
+    Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name # Log start time stamp
     Write-Log -Message 'Enumerating mapped network drives' -Function $MyInvocation.MyCommand.Name
     get-psdrive -PSProvider FileSystem 
     Show-Progress -msgAction 'Stop' -msgSource $MyInvocation.MyCommand.Name # Log end time stamp
@@ -94,15 +102,17 @@ function Get-DriveMaps {
 
 # Define Remove-DriveMaps function
 function Remove-DriveMaps {
-    Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name; # Log start time stamp
+    [CmdletBinding(SupportsShouldProcess)]
+    param ()
+    Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name # Log start time stamp
     Write-Log -Message 'Removing mapped network drives' -Function $MyInvocation.MyCommand.Name
-    get-psdrive -PSProvider FileSystem | ForEach {
+    get-psdrive -PSProvider FileSystem | ForEach-Object {
         if (${_}.DisplayRoot -like '\\*') {
             Write-Log -Message "Remove-PSDrive $(${_}.Name): $(${_}.DisplayRoot)" -Function $MyInvocation.MyCommand.Name
             remove-psdrive ${_};
         }
     }
-    Show-Progress -msgAction 'Stop' -msgSource $MyInvocation.MyCommand.Name; # Log end time stamp
+    Show-Progress -msgAction 'Stop' -msgSource $MyInvocation.MyCommand.Name # Log end time stamp
 }
 
 function Connect-WiFi {
@@ -122,7 +132,7 @@ function Connect-WiFi {
         Attempts to connect the wireless network adapter to the default SSID
 		The function contains a default SSID variable, for convenience
 #>
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess)]
     [OutputType([string])]
     param (
         [Parameter(
@@ -157,23 +167,10 @@ function Connect-WiFi {
         11 = 'Invalid Address'
         12 = 'Credentials Required'
     }
-#         ..='Other'
 
-    Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name; # Log start time stamp;
-<#    Write-Log -Message 'Check that SophosFW is stopped' -Function $MyInvocation.MyCommand.Name;
-    if (Get-SophosFW('Running')) { Set-SophosFW -ServiceStatus Stopped}
-#>
-
-#    Write-Log -Message 'Enumerate WiFi adapter(s)' -Function $($MyInvocation.MyCommand).Name
-
-# Replace this following block with call to/of Set-NetConnStatus (from Toggle-Wireless)
-
-    # Use Get-WmiObject, which provides .Enable() method
-    $Private:wireless_adapters = @(Get-WmiObject Win32_NetworkAdapter -Filter "PhysicalAdapter=True AND Name LIKE '%ireless%'") # | Select-Object -Property Name,NetConnectionID,NetConnectionStatus,NetEnabled) # CimInstance
-    ForEach-Object -InputObject $wireless_adapters {
-        $MyInvocation | get-member -membertype property
-        $MyInvocation.MyCommand | get-member -membertype property
-        
+    Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name # Log start time stamp;
+    Get-ServiceGroup -Name 'Sophos Client Firewall' -Status Stopped
+    ForEach-Object -InputObject @(Get-WmiObject Win32_NetworkAdapter -Filter "PhysicalAdapter=True AND Name LIKE '%ireless%'") {
         Write-Log -Message "Connecting $($PSItem.NetConnectionID) to $SSID" -Function $($MyInvocation.MyCommand).Name
         if ($PSItem.Availability -ne 3) {
             if (test-localadmin) {
@@ -184,8 +181,9 @@ function Connect-WiFi {
                 }
             } else {
                 Write-Log -Message 'Attempting to invoke new powershell sessions with RunAs (elevated permissions) to enable adapter via' -Function $MyInvocation.MyCommand.Name
-                $ScriptBlock = { $Private:wireless_adapters = @(Get-WmiObject Win32_NetworkAdapter -Filter "PhysicalAdapter='true' AND ipenabled='true' AND Name LIKE '%ireless%'"); ForEach-Object -InputObject $wireless_adapters { ($PSItem.enable()).ReturnValue } }
-                $return = New-AdminConsole -NoProfile -Command {$ScriptBlock}
+#                $ScriptBlock = { 
+ #                   ForEach-Object -InputObject @(Get-WmiObject Win32_NetworkAdapter -Filter "PhysicalAdapter=True AND Name LIKE '%ireless%'") { ($PSItem.enable()).ReturnValue } }
+                $return = Open-AdminConsole -NoProfile -Command {ForEach-Object -InputObject @(Get-WmiObject Win32_NetworkAdapter -Filter "PhysicalAdapter=True AND Name LIKE '%ireless%'") { ($PSItem.enable()).ReturnValue }}
                 # $return = Start-Process -FilePath "$PSHOME\powershell.exe" -ArgumentList "-NoProfile -NonInteractive -Command $ScriptBlock" -Verb RunAs -WindowStyle Normal
                 if ($return -eq 0)
                 {
@@ -220,10 +218,16 @@ function Disconnect-WiFi {
 
 		True - indicates the netsh command returned successful
 #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param ()
     Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name # Log start time stamp
     Write-Log -Message 'netsh.exe wlan disconnect' -Function $MyInvocation.MyCommand.Name
-    Invoke-Command -ScriptBlock {netsh.exe wlan disconnect}
-    return $?
+
+    if($PSCmdlet.ShouldProcess( "Disconnected wlan", "Disconnect wlan`?", "Disconnecting wlan" ))
+    {
+        Invoke-Command -ScriptBlock {netsh.exe wlan disconnect}
+        return $?
+    }
     Show-Progress -msgAction 'Stop' -msgSource $MyInvocation.MyCommand.Name # Log end time stamp
 }
 
@@ -278,17 +282,17 @@ function Get-IPAddress {
     New-Variable -Name OutputObj -Description 'Object to be returned by this function' -Scope Private
     Get-WmiObject -Class Win32_NetworkAdapterConfiguration  -Filter 'IpEnabled = True AND DhcpEnabled = True' |
     ForEach-Object -Process {
-        #'Optimize New-Object invocation, based on Don Jones' recommendation: https://technet.microsoft.com/en-us/magazine/hh750381.aspx
-        $Private:properties = @{
-            'AdapterDescription'=$PSItem.Description
-            'IPAddress'=$PSItem.IPAddress
-            'Gateway'=$PSItem.DefaultIPGateway
-            'DNSServers'=$PSItem.DNSServerSearchOrder
-            'AdapterHost'=$PSItem.PSComputerName
-        }
-        $Private:RetObject = New-Object -TypeName PSObject -Prop $properties
+      #'Optimize New-Object invocation, based on Don Jones' recommendation: https://technet.microsoft.com/en-us/magazine/hh750381.aspx
+      $Private:properties = [ordered]@{
+        'AdapterHost'        =$PSItem.PSComputerName
+        'AdapterDescription' =$PSItem.Description
+        'IPAddress'          =$PSItem.IPAddress
+        'Gateway'            =$PSItem.DefaultIPGateway
+        'DNSServers'         =$PSItem.DNSServerSearchOrder
+      }
+      $Private:RetObject = New-Object -TypeName PSObject -Prop $properties
 
-        return $RetObject # $OutputObj
+      return $RetObject # $OutputObj
     } # end of foreach
 } # end function Get-IPAddress
 
@@ -407,6 +411,7 @@ function Set-UAC {
 }
 
 function Set-Workplace {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(
             Mandatory,
@@ -431,11 +436,11 @@ function Set-Workplace {
             Set-NetConnStatus
 
             Write-Log -Message 'Confirm workplace firewall is functional' -Function $MyInvocation.MyCommand.Name
-            Set-SophosFW -ServiceStatus Running
+            Set-ServiceGroup -Name 'Sophos Client Firewall' -Status Running
 
             Write-Log -Message 'Map all defined network drives' -Function $MyInvocation.MyCommand.Name
-            Set-DriveMaps -AllDrives
-            Get-DriveMaps
+            Set-DriveMaps
+            #Get-DriveMaps
 
             # Update IE home page to intranet Infrastructure page
             $IEHomePage = 'https://intranet2/pg_view.aspx?PageID=1294'
@@ -456,8 +461,7 @@ function Set-Workplace {
             # In the following block it's referred to as 'taskmgr', because the procexp option was used to replace native taskmgr (Win7)
 
             Write-Log -Message 'Modify FW Profile' -Function $MyInvocation.MyCommand.Name
-
-            Set-SophosFW -ServiceStatus Stopped
+            Get-ServiceGroup -Name 'Sophos Client Firewall' -Status Stopped
 
             Write-Log -Message 'Dismount mapped network drives' -Function $MyInvocation.MyCommand.Name
             Remove-DriveMaps
@@ -487,9 +491,6 @@ function Set-Workplace {
 
     # Then we resume instructions we always process
 
-    $defaultBrowser = 'C:\Users\bdady\AppData\Local\brave\Update.exe --processStart "Brave.exe"'
-    $codeInsider = '"C:\Program Files (x86)\Microsoft VS Code Insiders\Code - Insiders.exe"'
-
     # Open default web browser and VS Code (Insiders/beta release)
     Write-Log -Message 'Start Brave Browser' -Function $MyInvocation.MyCommand.Name
     Set-ProcessState -ProcessName Brave -Action Start
@@ -499,7 +500,7 @@ function Set-Workplace {
     <#
     Write-Log -Message 'Start PortableApps menu' -Function $MyInvocation.MyCommand.Name
     # Start other stuff; nice to haves
-    & "$env:SystemDrive\SWTOOLS\Start.exe"; # Start PortableApps menu
+    & "$env:SystemDrive\SWTOOLS\Start.exe" # Start PortableApps menu
     #>
 
     <#
@@ -525,9 +526,9 @@ function Set-Workplace {
         Y {
             Write-Log -Message 'Opening all Desktop Documents' -Function $MyInvocation.MyCommand.Name
             # Open all desktop PDF files
-            Get-ChildItem $env:USERPROFILE\Desktop\*.pdf | foreach { & $_ ; Start-Sleep -Milliseconds 400}
+            Get-ChildItem $env:USERPROFILE\Desktop\*.pdf | ForEach-Object { & $_ ; Start-Sleep -Milliseconds 400}
             # Open all desktop Word doc files
-            Get-ChildItem $env:USERPROFILE\Desktop\*.doc* | foreach { & $_ ; Start-Sleep -Milliseconds 800}
+            Get-ChildItem $env:USERPROFILE\Desktop\*.doc* | ForEach-Object { & $_ ; Start-Sleep -Milliseconds 800}
         }
         N { }
         default {
