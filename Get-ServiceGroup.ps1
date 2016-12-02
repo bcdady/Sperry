@@ -85,34 +85,15 @@ function Get-ServiceGroup
     Write-Log -Message "Service Count matching Status: $ServiceCount" -Function ServiceGroup
     Write-Verbose -Message "Service Count matching Status: $ServiceCount"
 
-#    switch ($Status) {
-#        'Running' 
-#        {
-            # if we want all the services running, but fewer than all are running, then our answer is false
-            if ($StatusCount -eq $ServiceCount) 
-            {
-                $StatusMatch = $true
-            }
-            else 
-            {
-                # otherwise, we can answer True
-                $StatusMatch = $false
-            }
-#        }
-#        'Stopped' 
-#        {
-#            if ($StatusCount -ge 1) 
-#            {
-                # if we want all the services Stopped, but 1 or more are running, then our answer is false
-#                $StatusMatch = $false
-#            }
-#            else 
-#            {
-                # otherwise, we can answer True
-#               $StatusMatch = $true
-#            }
-#        }
-#    }
+    # if the count of actual running doesn't match the all services count, then our answer is false
+    if ($StatusCount -eq $ServiceCount) 
+    {
+        $StatusMatch = $true
+    }
+    else 
+    {
+        $StatusMatch = $false
+    }
     Write-Debug -Message "Get-ServiceGroup $Status = $StatusMatch" # -Function ServiceGroup
 
     # Define properties of custom object to be returned
@@ -123,6 +104,11 @@ function Get-ServiceGroup
         'StatusMatch'  = $StatusMatch
     }
     $script:RetObject = New-Object -TypeName PSObject -Prop $script:properties
+
+    Show-Progress -Mode Stop -Action ServiceGroup
+    # Log stop time-stamp
+
+    return $script:RetObject
     <#
         Model resulting / returned object after Service object
     TypeName: System.ServiceProcess.ServiceController
@@ -146,11 +132,6 @@ function Get-ServiceGroup
     Site                Property      System.ComponentModel.ISite Site {get;set;}
     StartType           Property      System.ServiceProcess.ServiceStartMode StartType {get;}
     #>
-
-    Show-Progress -Mode Stop -Action ServiceGroup
-    # Log stop time-stamp
-
-    return $script:RetObject
 }
 
 function Set-ServiceGroup 
@@ -234,65 +215,33 @@ function Set-ServiceGroup
                 'Running' 
                 {
                     Write-Log -Message 'Confirmed elevated privileges; Starting $ServiceName services' -Function ServiceGroup
-                    Start-Service -Name $ServiceName -Force
+                    Start-Service -Name $ServiceName -PassThru | Format-Table -AutoSize -Property Name,Status
+                    Start-Sleep -Seconds 1
                 }
                 'Stopped' 
                 {
                     Write-Log -Message 'Confirmed elevated privileges; Stopping $ServiceName services' -Function ServiceGroup
-                    Stop-Service -Name $ServiceName -Force
+                    Stop-Service -Name $ServiceName -PassThru | Format-Table -AutoSize -Property Name,Status
+                    Start-Sleep -Seconds 1
                 }
             }        
         }
         else 
         {
             # Before we attempt to elevate permissions, check current services state 
-            switch ($Status) {
-                'Running' 
-                {
-                    Write-Log -Message 'Need elevated privileges to proceed ... attempting Start-Service using admin privileges.' -Function ServiceGroup
-                    Set-UAC
-                    Write-Verbose -Message "`$output = Open-AdminConsole -NoProfile -Command {Start-Service -Name $ServiceName -Force -PassThru}"
-                    $output = Open-AdminConsole -NoProfile -Command {Start-Service -Name $ServiceName -Force -PassThru}
-                    write-debug -Message $output
-    <#                $Status = $?
-                        if ($Status) 
-                        {
-                            Write-Log -Message "Elevated privileges session completed ... firewall services running: $Status" -Function ServiceGroup
-                        } else 
-                        {
-                            Write-Log -Message "Elevated privileges session completed. Result: $Status. There was an issue starting / resuming firewall services" -Function ServiceGroup -Verbose
-                        }
-                    }
-    #>            }
-                'Stopped' 
-                {
-                    Write-Log -Message 'Need elevated privileges to proceed ... attempting Stop-Service using admin privileges.' -Function ServiceGroup
-                    Set-UAC
-                    $output = Open-AdminConsole -NoProfile -Command {Stop-Service -Name $ServiceName -Force -PassThru}
-                    write-debug -Message $output
-    <#                $Status = $?
-                        if ($Status) 
-                        {
-                            Write-Log -Message "Elevated privileges session completed ... firewall services running: $Status" -Function ServiceGroup
-                        } else 
-                        {
-                            Write-Log -Message "Elevated privileges session completed. Result: $Status. There was an issue suspending firewall services" -Function ServiceGroup -Verbose
-                        }
-                    }
-    #>            }
+            Write-Debug -Message "StatusMatch: $((Get-ServiceGroup -ServiceName $ServiceName -Status $Status).StatusMatch)"
+            if (-not (Get-ServiceGroup -ServiceName $ServiceName -Status $Status).StatusMatch)
+            {
+                Write-Log -Message 'Need elevated privileges to proceed ... attempting Start-Service using admin privileges.' -Function ServiceGroup -Verbose
+                Set-UAC
+                Start-Sleep -Milliseconds 200
+                Write-Debug -Message "Open-AdminConsole -Command {Start-Service -Name $ServiceName -Status $Status}"
+                Open-AdminConsole -Command {Set-ServiceGroup -ServiceName $ServiceName -Status $Status}
             }
         }
+        # Get ServiceGroup and show output
+        Get-ServiceGroup -ServiceName $ServiceName -Status $Status
     }
-    # Get ServiceGroup and show output
-    Get-ServiceGroup -ServiceName $ServiceName -Status $Status
-<#    # Define properties of custom object to be returned
-    $properties = [Ordered]@{
-        'Name'        = $ServiceName
-        'Status'      = $Status
-        'StatusMatch' = $StatusMatch
-    }
-    $script:RetObject = New-Object -TypeName PSObject -Prop $script:properties
-#>
-    Show-Progress -Mode Stop -Action ServiceGroup
     # Log stop time-stamp
+    Show-Progress -Mode Stop -Action ServiceGroup
 }

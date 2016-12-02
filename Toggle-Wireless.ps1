@@ -50,7 +50,6 @@
 Write-Verbose -Message 'Declaring function Set-NetConnStatus'
 function Set-NetConnStatus {
     [CmdletBinding(SupportsShouldProcess=$true, ConfirmImpact="Medium")]
-
     Param (
         [string]
         [Parameter(
@@ -202,8 +201,8 @@ function Set-NetConnStatus {
                                 Write-Warning 'Failed to invoke Set-UAC function.'
                             }
 
-                            Write-Verbose -Message 'Elevating via Open-AdminConsole -NoProfile'
-                            Open-AdminConsole -NoProfile -Command Set-NetConnStatus
+                            Write-Verbose -Message 'Elevating via Open-AdminConsole'
+                            Open-AdminConsole -Command Set-NetConnStatus
                         }
                         else
                         {
@@ -236,8 +235,8 @@ function Set-NetConnStatus {
                                 Write-Warning 'Failed to invoke Set-UAC function.'
                             }
 
-                            Write-Verbose -Message 'Elevating via Open-AdminConsole -NoProfile'
-                            Open-AdminConsole -NoProfile -Command Set-NetConnStatus
+                            Write-Verbose -Message 'Elevating via Open-AdminConsole'
+                            Open-AdminConsole -Command Set-NetConnStatus
                         }
                         else
                         {

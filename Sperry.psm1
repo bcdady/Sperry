@@ -169,7 +169,7 @@ function Connect-WiFi {
     }
 
     Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name # Log start time stamp;
-    Get-ServiceGroup -Name 'Sophos Client Firewall' -Status Stopped
+    Set-ServiceGroup -Name 'Sophos Client Firewall*' -Status Stopped
     ForEach-Object -InputObject @(Get-WmiObject Win32_NetworkAdapter -Filter "PhysicalAdapter=True AND Name LIKE '%ireless%'") {
         Write-Log -Message "Connecting $($PSItem.NetConnectionID) to $SSID" -Function $($MyInvocation.MyCommand).Name
         if ($PSItem.Availability -ne 3) {
@@ -183,7 +183,7 @@ function Connect-WiFi {
                 Write-Log -Message 'Attempting to invoke new powershell sessions with RunAs (elevated permissions) to enable adapter via' -Function $MyInvocation.MyCommand.Name
 #                $ScriptBlock = { 
  #                   ForEach-Object -InputObject @(Get-WmiObject Win32_NetworkAdapter -Filter "PhysicalAdapter=True AND Name LIKE '%ireless%'") { ($PSItem.enable()).ReturnValue } }
-                $return = Open-AdminConsole -NoProfile -Command {ForEach-Object -InputObject @(Get-WmiObject Win32_NetworkAdapter -Filter "PhysicalAdapter=True AND Name LIKE '%ireless%'") { ($PSItem.enable()).ReturnValue }}
+                $return = Open-AdminConsole -Command {ForEach-Object -InputObject @(Get-WmiObject Win32_NetworkAdapter -Filter "PhysicalAdapter=True AND Name LIKE '%ireless%'") { ($PSItem.enable()).ReturnValue }}
                 # $return = Start-Process -FilePath "$PSHOME\powershell.exe" -ArgumentList "-NoProfile -NonInteractive -Command $ScriptBlock" -Verb RunAs -WindowStyle Normal
                 if ($return -eq 0)
                 {
@@ -338,7 +338,7 @@ function Start-CitrixReceiver {
             Start-Sleep -Milliseconds 333
             # Before we launch an elevated process, check (via function) that UAC is conveniently set
             Set-UAC
-            Open-AdminConsole -NoProfile -Command {Start-CitrixReceiver} 
+            Open-AdminConsole -Command {Start-CitrixReceiver} 
         }
         else
         {
@@ -436,7 +436,7 @@ function Set-Workplace {
             Set-NetConnStatus
 
             Write-Log -Message 'Confirm workplace firewall is functional' -Function $MyInvocation.MyCommand.Name
-            Set-ServiceGroup -Name 'Sophos Client Firewall' -Status Running
+            Set-ServiceGroup -Name 'Sophos Client Firewall*' -Status Running
 
             Write-Log -Message 'Map all defined network drives' -Function $MyInvocation.MyCommand.Name
             Set-DriveMaps
@@ -461,7 +461,7 @@ function Set-Workplace {
             # In the following block it's referred to as 'taskmgr', because the procexp option was used to replace native taskmgr (Win7)
 
             Write-Log -Message 'Modify FW Profile' -Function $MyInvocation.MyCommand.Name
-            Get-ServiceGroup -Name 'Sophos Client Firewall' -Status Stopped
+            Get-ServiceGroup -Name 'Sophos Client Firewall*' -Status Stopped
 
             Write-Log -Message 'Dismount mapped network drives' -Function $MyInvocation.MyCommand.Name
             Remove-DriveMaps

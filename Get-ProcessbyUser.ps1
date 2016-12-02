@@ -4,7 +4,6 @@
 
 Write-Verbose -Message 'Defining function Get-ProcessbyUser'
 function Get-ProcessByUser {
-# RFE :: consolidate to unique names, with multivalue ProcessID field (e.g. comma delimited list)
 <#
     .SYNOPSIS
         Gets the processes, for the current or specified user, that are running on the local computer or a remote computer.
@@ -28,8 +27,7 @@ function Get-ProcessByUser {
         taskhost.exe     Host Process for Windows T...   [username]     3740
 
 #>
-    [CmdletBinding()]
-    [OutputType([object])]
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Position=0)]
         [String]
@@ -82,6 +80,8 @@ function Get-ProcessByUser {
     $Script:RetCollection = @()
     $script:ProgressCounter = 0
 
+    Get-Variable -Name Processes -ErrorAction Stop
+    
     Write-Debug -Message "`$Processes: $($Processes.Name | Select-Object -First 10) ..."
     ForEach ($Process in $Processes)
     {
@@ -90,12 +90,13 @@ function Get-ProcessByUser {
         $ProgressCounter++
         # $Process | get-member -membertype properties
         Write-Debug -Message "Get `$ProcessOwner for $($Process.Name)"
-        #$ErrorActionPreference = 'SilentlyContinue'
+        $ErrorActionPreference = SilentlyContinue
         $script:ProcessOwner = $Process.getowner().User
         if ($null -eq $ProcessOwner)
         {
             $script:ProcessOwner = 'Unknown'    
         }
+        $ErrorActionPreference = Stop
          
         if ($ProcessOwner -like "*$UserName*")
         {
