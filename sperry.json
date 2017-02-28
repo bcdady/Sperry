@@ -1,55 +1,238 @@
 {
     "json_description": "User costumizations for PowerShell Sperry module.",
     "version": "0.1.6",
-	"updated": "11-21-2016",
+    "updated": "11-21-2016",
     "XenApp": [
-        {"Name":"Assyst","QLaunch":"GBCI02XA:Assyst"},
-        {"Name":"cmd","QLaunch":"GBCI02XA:Command Line"},
-        {"Name":"Excel","QLaunch":"GBCI02XA:Microsoft Excel 2010"},
-        {"Name":"Firefox","QLaunch":"GBCI02XA:FireFox"},
-        {"Name":"H_Drive","QLaunch":"GBCI02XA:H Drive"},
-        {"Name":"IE","QLaunch":"GBCI02XA:Internet Explorer"},
-        {"Name":"ITSC","QLaunch":"GBCI02XA:IT Service Center"},
-        {"Name":"MSTSC","QLaunch":"GBCI02XA:RDP Client"},
-        {"Name":"OneNote","QLaunch":"GBCI02XA:Microsoft OneNote 2010"},
-        {"Name":"Outlook","QLaunch":"GBCI02XA:Microsoft Outlook 2010"},
-        {"Name":"PowerPoint","QLaunch":"GBCI02XA:Microsoft Powerpoint 2010"},
-        {"Name":"PrinterList","QLaunch":"GBCI02XA:Printer List5257"},
-        {"Name":"RDP","QLaunch":"GBCI02XA:RDP Client"},
-        {"Name":"S_Drive","QLaunch":"GBCI02XA:S Drive"},
-        {"Name":"Synergy","QLaunch":"GBCI02XA:Synergy User Client"},
-        {"Name":"Word","QLaunch":"GBCI02XA:Microsoft Word 2010"},
-        {"Name":"visio","QLaunch":"GBCI02XA:Microsoft Visio 2013"}
+        {
+            "Name": "Assyst",
+            "QLaunch": "GBCI02XA:Assyst"
+        },
+        {
+            "Name": "cmd",
+            "QLaunch": "GBCI02XA:Command Line"
+        },
+        {
+            "Name": "Excel",
+            "QLaunch": "GBCI02XA:Microsoft Excel 2010"
+        },
+        {
+            "Name": "Firefox",
+            "QLaunch": "GBCI02XA:FireFox"
+        },
+        {
+            "Name": "H_Drive",
+            "QLaunch": "GBCI02XA:H Drive"
+        },
+        {
+            "Name": "IE",
+            "QLaunch": "GBCI02XA:Internet Explorer"
+        },
+        {
+            "Name": "ITSC",
+            "QLaunch": "GBCI02XA:IT Service Center"
+        },
+        {
+            "Name": "MSTSC",
+            "QLaunch": "GBCI02XA:RDP Client"
+        },
+        {
+            "Name": "OneNote",
+            "QLaunch": "GBCI02XA:Microsoft OneNote 2010"
+        },
+        {
+            "Name": "Outlook",
+            "QLaunch": "GBCI02XA:Microsoft Outlook 2010"
+        },
+        {
+            "Name": "PowerPoint",
+            "QLaunch": "GBCI02XA:Microsoft Powerpoint 2010"
+        },
+        {
+            "Name": "PrinterList",
+            "QLaunch": "GBCI02XA:Printer List5257"
+        },
+        {
+            "Name": "RDP",
+            "QLaunch": "GBCI02XA:RDP Client"
+        },
+        {
+            "Name": "S_Drive",
+            "QLaunch": "GBCI02XA:S Drive"
+        },
+        {
+            "Name": "Synergy",
+            "QLaunch": "GBCI02XA:Synergy User Client"
+        },
+        {
+            "Name": "Word",
+            "QLaunch": "GBCI02XA:Microsoft Word 2010"
+        },
+        {
+            "Name": "visio",
+            "QLaunch": "GBCI02XA:Microsoft Visio 2013"
+        }
     ],
     "KnownProcess": [
-        {"Name":"Brave","Path":"$env:LOCALAPPDATA\\brave\\Update.exe"},
-        {"Name":"CodeInsider","Path":"${env:ProgramFiles(x86)}\\Microsoft VS Code Insiders\\bin\\code-insiders.cmd"},
-        {"Name":"GitHub","Path":"$env:APPDATA\\Microsoft\\Windows\\Start Menu\\Programs\\GitHub, Inc\\GitHub.appref-ms"},
-        {"Name":"iexplore","Path":"$env:ProgramFiles\\Internet Explorer\\iexplore.exe"},
-        {"Name":"onenote","Path":"$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Microsoft Office\\Microsoft OneNote 2010.lnk"},
-        {"Name":"outlook","Path":"$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Microsoft Office\\Microsoft Outlook 2010.lnk"},
-        {"Name":"pnagent","Path":"${env:ProgramFiles(x86)}\\Citrix\\ICA Client\\pnagent.exe"},
-        {"Name":"pnamain","Path":"${env:ProgramFiles(x86)}\\Citrix\\ICA Client\\pnamain.exe"},
-        {"Name":"procexp","Path":"$env:USERPROFILE\\Downloads\\Sysinternals\\procexp.exe"},
-        {"Name":"receiver","Path":"$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Citrix\\Receiver.lnk"},
-        {"Name":"taskmgr","Path":"$env:SystemDrive\\SWTOOLS\\SysinternalsSuite\\procexp.exe"}
+        {
+            "Name": "Brave",
+            "Path": "$env:LOCALAPPDATA\\brave\\Update.exe"
+        },
+        {
+            "Name": "Chrome",
+            "Path": "${env:ProgramFiles(x86)}\\Google\\Chrome\\Application\\chrome.exe"
+        },
+        {
+            "Name": "CodeInsider",
+            "Path": "${env:ProgramFiles(x86)}\\Microsoft VS Code Insiders\\bin\\code-insiders.cmd"
+        },
+        {
+            "Name": "GitHub",
+            "Path": "$env:APPDATA\\Microsoft\\Windows\\Start Menu\\Programs\\GitHub, Inc\\GitHub.appref-ms"
+        },
+        {
+            "Name": "iexplore",
+            "Path": "$env:ProgramFiles\\Internet Explorer\\iexplore.exe"
+        },
+        {
+            "Name": "onenote",
+            "Path": "$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Microsoft Office\\Microsoft OneNote 2010.lnk"
+        },
+        {
+            "Name": "outlook",
+            "Path": "$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Microsoft Office\\Microsoft Outlook 2010.lnk"
+        },
+        {
+            "Name": "pnagent",
+            "Path": "${env:ProgramFiles(x86)}\\Citrix\\ICA Client\\pnagent.exe"
+        },
+        {
+            "Name": "pnamain",
+            "Path": "${env:ProgramFiles(x86)}\\Citrix\\ICA Client\\pnamain.exe"
+        },
+        {
+            "Name": "procexp",
+            "Path": "$env:USERPROFILE\\Downloads\\Sysinternals\\procexp.exe"
+        },
+        {
+            "Name": "receiver",
+            "Path": "$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Citrix\\Receiver.lnk"
+        },
+        {
+            "Name": "taskmgr",
+            "Path": "$env:SystemDrive\\SWTOOLS\\SysinternalsSuite\\procexp.exe"
+        }
     ],
     "UNCPath": [
-        {"DriveName":"H","FullPath":"\\\\hcdata\\homes$\\gbci\\$env:USERNAME"},
-        {"DriveName":"I","FullPath":"\\\\hcdata\\homes$\\gbci\\$env:USERNAME`2"},
-        {"DriveName":"R","FullPath":"\\\\hcdata\\apps"},
-        {"DriveName":"S","FullPath":"\\\\hcdata\\gbci\\shared\\it"},
-        {"DriveName":"X","FullPath":"\\\\hcdata\\gbci\\shared"},
-        {"DriveName":"V","FullPath":"\\\\$env:USERDNSDOMAIN\\SysVol\\$env:USERDNSDOMAIN\\scripts"}
+        {
+            "DriveName": "H",
+            "FullPath": "\\\\hcdata\\homes$\\gbci\\$env:USERNAME"
+        },
+        {
+            "DriveName": "I",
+            "FullPath": "\\\\hcdata\\homes$\\gbci\\$env:USERNAME`2"
+        },
+        {
+            "DriveName": "R",
+            "FullPath": "\\\\hcdata\\apps"
+        },
+        {
+            "DriveName": "S",
+            "FullPath": "\\\\hcdata\\gbci\\shared\\it"
+        },
+        {
+            "DriveName": "X",
+            "FullPath": "\\\\hcdata\\gbci\\shared"
+        },
+        {
+            "DriveName": "V",
+            "FullPath": "\\\\$env:USERDNSDOMAIN\\SysVol\\$env:USERDNSDOMAIN\\scripts"
+        }
     ],
-    "Network": {
-        "SSID":"Halcyon"
-    },
+    "Workplace": [
+        {
+            "Name": "Remote",
+            "function_before": [
+                {
+                    "Name": "Dismount-Path",
+                    "Message": "Remove (unmount) all network (UNC) drive letters"
+                },
+                {
+                    "Name": "Connect-WiFi -SSID Halcyon",
+                    "Message": "Connect to specified wireless network"
+                },
+                {
+                    "Name": "Clear-IECookie",
+                    "Args": "cag",
+                    "Message": "Clear any related browser cookies"
+                }
+            ],
+            "ServiceGroup": [
+                {
+                    "Name": "Sophos Client Firewall*",
+                    "Status": "Stopped",
+                    "Message": "Suspend client firewall"
+                }
+            ],
+            "IEHomePage": "https://cag.glacierbancorp.com",
+            "SSID": "Halcyon",
+            "BrowserProgid": "ChromeHTML",
+            "ProcessState": [
+                {
+                    "Name": "Chrome",
+                    "Action": "Start",
+                    "Message": "Start Chrome browser"
+                },
+                {
+                    "Name": "CodeInsider",
+                    "Action": "Start",
+                    "Message": "Start VS-Code Insider"
+                },
+                {
+                    "Name": "iexplore",
+                    "Action": "Start",
+                    "Message": "Start IE Home Page"
+                }
+            ],
+            "function_after": []
+        },
+        {
+            "Name":"Office",
+            "function_before": [
+                {
+                    "Name": "Set-NetConnStatus",
+                    "Message": "Enable wired network adapter"
+                },
+                {
+                    "Name": "Mount-Path",
+                    "Message": "Map (mount) all defined network (UNC) drive letters"
+                }
+            ],
+            "ServiceGroup": [
+                {
+                    "Name": "Sophos Client Firewall*",
+                    "Status": "Running",
+                    "Message": "Ensure client firewall is enabled"
+                }
+            ],
+            "IEHomePage": "https://intranet2/pg_view.aspx?PageID=1294",
+            "BrowserProgid": "IE.HTTPS",
+            "function_after": [
+                {
+                    "Name": "Start-CitrixReceiver",
+                    "Message": "Start Citrix Receiver"
+                },
+                {
+                    "Name": "Set-Printer -printerShareName GC92IT252",
+                    "Message": "Set default printer: GC92IT252"
+                }
+            ]
+        }
+    ],
     "configurations": [
-		{
-			"name": "PowerShell",
-			"type": "PowerShell",
-			"program": "Sperry.psm1"
-		}
-	]
+        {
+            "name": "PowerShell",
+            "type": "PowerShell",
+            "program": "Sperry.psm1"
+        }
+    ]
 }

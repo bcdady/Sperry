@@ -80,9 +80,16 @@ function Get-ProcessByUser {
     $Script:RetCollection = @()
     $script:ProgressCounter = 0
 
-    Get-Variable -Name Processes -ErrorAction Stop
-    
-    Write-Debug -Message "`$Processes: $($Processes.Name | Select-Object -First 10) ..."
+    try {
+#        Get-Variable -Scope Script -Name Processes -ErrorAction Ignore
+#        $Processes | Select-Object -Property Name -ErrorAction Ignore
+        Write-Debug -Message "`$Processes: $($Processes.Name | Select-Object -First 10) ..."
+    }
+    catch [System.Exception] {
+        Write-Verbose -Message "NO Processes found running matching filter: $ProcessName"
+        Write-Debug -Message 'NO Matching Processes retrieved'
+    }
+
     ForEach ($Process in $Processes)
     {
         Write-Debug -Message "Write-Progress -Activity 'Get-ProcessInfo' -PercentComplete ($ProgressCounter/$($Processes.Count)) :: $($ProgressCounter/$($Processes.Count)) -CurrentOperation $($Process.Name)"
@@ -90,13 +97,13 @@ function Get-ProcessByUser {
         $ProgressCounter++
         # $Process | get-member -membertype properties
         Write-Debug -Message "Get `$ProcessOwner for $($Process.Name)"
-        $ErrorActionPreference = SilentlyContinue
+        $ErrorActionPreference = 'SilentlyContinue'
         $script:ProcessOwner = $Process.getowner().User
         if ($null -eq $ProcessOwner)
         {
             $script:ProcessOwner = 'Unknown'    
         }
-        $ErrorActionPreference = Stop
+        $ErrorActionPreference = 'Stop'
          
         if ($ProcessOwner -like "*$UserName*")
         {

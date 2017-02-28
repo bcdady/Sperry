@@ -74,11 +74,13 @@ function Set-ProcessState
         [parameter(Position = 0)]
         [ValidateNotNullOrEmpty()]
         [String]
+        [alias('Name')]
         $ProcessName,
 
         [parameter(Position = 1)]
         [ValidateSet('Start', 'Stop')]
         [String]
+        [alias('Status')]
         $Action,
 
         [Parameter(Position = 2)]
@@ -152,13 +154,13 @@ function Set-ProcessState
                         {
                             Write-Log -Message "Starting $ProcessName $($knownPaths[$ProcessName]) -ArgumentList $script:CPargs" -Function ProcessState
                             Write-Verbose -Message "Starting $ProcessName $($knownPaths[$ProcessName]) -ArgumentList $script:CPargs"
-                            Start-Process -FilePath $($knownPaths[$($ProcessName)]) -ArgumentList $script:CPargs -WindowStyle Minimized
+                            Start-Process -FilePath $($knownPaths[$($ProcessName)]) -ArgumentList $script:CPargs
                         }
                         else
                         {
                             Write-Log -Message "Starting $ProcessName $($knownPaths[$ProcessName])" -Function ProcessState
                             Write-Verbose -Message "Starting $ProcessName $($knownPaths[$ProcessName])"
-                            Start-Process -FilePath $($knownPaths[$($ProcessName)]) -WindowStyle Minimized
+                            Start-Process -FilePath $($knownPaths[$($ProcessName)]) 
                         }
                     } else {  
                         Write-Output -InputObject "What if: Performing the operation ""Start-Process"" on target ""$knownPaths[$ProcessName]"" with -ArgumentList ""$CPargs"" for key ($ProcessName)."

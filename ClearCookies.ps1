@@ -20,6 +20,7 @@
 Write-Verbose -Message 'Defining function Get-IECookie'
 function Get-IECookie
 {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(
             Mandatory = $false,
@@ -55,6 +56,7 @@ function Get-IECookie
 Write-Verbose -Message 'Defining function Clear-IECookie'
 function Clear-IECookie
 {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(
             Mandatory = $false,
@@ -75,7 +77,7 @@ function Clear-IECookie
     Select-Object -Unique -Property Path |
     ForEach-Object -Process {
         Write-Log -Message "Deleting IE Cookie file: $($PSItem.Path)" -Function Sperry
-        Remove-Item -Path $PSItem.Path -Force
+        Remove-Item -Path $PSItem.Path -Force -ErrorAction Ignore
     }
 
     Show-Progress -msgAction Stop -msgSource Sperry
