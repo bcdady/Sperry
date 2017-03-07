@@ -126,7 +126,8 @@ function Mount-Path {
   $Global:Settings.UNCPath | ForEach-Object {
     $DriveName = $ExecutionContext.InvokeCommand.ExpandString($PSItem.DriveName)
     $UNCroot   = $ExecutionContext.InvokeCommand.ExpandString($PSItem.FullPath)
-    if (Test-Path -Path ('{0}`:\' -f $DriveName)) {
+
+    if (Test-Path -Path ('{0}:\' -f $DriveName)) {
       Write-Warning -Message ('Drive letter {0} already in use.' -f $DriveName)
     }
     elseif (-not (Test-Path -Path $UNCroot)) {
@@ -134,9 +135,9 @@ function Mount-Path {
     }
     else
     {
-      Write-Log -Message ('New-PSDrive {0}`: {1}' -f $DriveName, $UNCroot) -Function 'Mount-Path'
+      Write-Log -Message ('New-PSDrive {0}: {1}' -f $DriveName, $UNCroot) -Function 'Mount-Path'
       Write-Debug -Message (' New-PSDrive -Persist -Name {0} -Root {1} -PSProvider FileSystem -scope Global' -f $DriveName, $UNCroot)
-      New-PSDrive -Name $DriveName -Root $UNCroot -PSProvider FileSystem -Persist -scope Global # -ErrorAction:SilentlyContinue
+      New-PSDrive -Name $DriveName -Root $UNCroot -PSProvider FileSystem -Persist -scope Global -ErrorAction:SilentlyContinue
       Start-Sleep -Milliseconds 500
     }
   }
@@ -377,7 +378,7 @@ function Start-CitrixReceiver {
     Start-Service -Name RadeSvc -ErrorAction:SilentlyContinue # Citrix Streaming Service
     Start-Service -Name RSCorSvc -ErrorAction:SilentlyContinue # Citrix System Monitoring Agent
   } else {
-    if ( -not (Get-Process -Name Receiver))
+    if ( -not (Get-Process -Name Receiver -ErrorAction SilentlyContinue))
     {
       Write-Log -Message 'Need to elevate privileges for proper completion ... requesting admin credentials.' -Function $MyInvocation.MyCommand.Name
       Start-Sleep -Milliseconds 333
@@ -450,23 +451,44 @@ function Set-Workplace {
   Write-Log -Message "Loading settings for Workplace $zone as defined in $SettingsFileName." -Function $loggingTag -Verbose
   $MySettings = $Global:Settings.Workplace | Where-Object -FilterScript {$PSItem.Name -eq $zone}
 
-  $MySettings.function_before | ForEach-Object -Process {
-    Write-Debug -Message "Function $($PSItem.Name) - Message: $($PSItem.Message)"
-    Write-Log -Message "$($PSItem.Message)" -Function $loggingTag
-    & $PSItem.Name -Verbose
-    Start-Sleep -Milliseconds 777
+  if (-not ($MySettings.function_before))
+  {
+    Write-Log '$MySettings.function_before was not found.' -Function $loggingTag
   }
-                  
-  $MySettings.ServiceGroup | ForEach-Object -Process {
-    Write-Log -Message ('{0}' -f $PSItem.Message) -Function $loggingTag
-    Set-ServiceGroup -Name $PSItem.Name -Status $PSItem.Status
-    Start-Sleep -Milliseconds 777
+  else
+  {
+    $MySettings.function_before | ForEach-Object -Process {
+      Write-Debug -Message "Function $($PSItem.Name) - Message: $($PSItem.Message)"
+      Write-Log -Message "$($PSItem.Message)" -Function $loggingTag
+      & $PSItem.Name -Verbose
+      Start-Sleep -Milliseconds 777
+    }
   }
 
-  $MySettings.ProcessState | ForEach-Object -Process {
-    Write-Log -Message ('{0}' -f $PSItem.Message) -Function $loggingTag
-    Set-ProcessState -Name $PSItem.Name -Action $PSItem.Action
-    Start-Sleep -Milliseconds 777
+  if (-not ($MySettings.ServiceGroup))
+  {
+    Write-Log '$MySettings.ServiceGroup was not found.' -Function $loggingTag
+  }
+  else
+  {
+    $MySettings.ServiceGroup | ForEach-Object -Process {
+      Write-Log -Message ('{0}' -f $PSItem.Message) -Function $loggingTag
+      Set-ServiceGroup -Name $PSItem.Name -Status $PSItem.Status
+      Start-Sleep -Milliseconds 777
+    }
+  }
+
+  if (-not ($MySettings.ProcessState))
+  {
+    Write-Log '$MySettings.ProcessState was not found.' -Function $loggingTag
+  }
+  else
+  {
+    $MySettings.ProcessState | ForEach-Object -Process {
+      Write-Log -Message ('{0}' -f $PSItem.Message) -Function $loggingTag
+      Set-ProcessState -Name $PSItem.Name -Action $PSItem.Action
+      Start-Sleep -Milliseconds 777
+    }
   }
 
   # Update IE home page
