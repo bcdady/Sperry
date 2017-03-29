@@ -98,6 +98,13 @@ function Set-ProcessState
 
     Import-Settings
     $script:knownPaths = @{}
+    try {
+        $Settings.KnownProcess | out-null
+    }
+    catch {
+        throw $Error
+    }
+    
     $Settings.KnownProcess | ForEach-Object {
         Write-Debug -Message "$($PSItem.Name) = $($ExecutionContext.InvokeCommand.ExpandString($PSItem.Path))"
         $script:knownPaths.Add("$($PSItem.Name)",$ExecutionContext.InvokeCommand.ExpandString($PSItem.Path))

@@ -74,10 +74,6 @@
     ],
     "KnownProcess": [
         {
-            "Name": "Brave",
-            "Path": "$env:LOCALAPPDATA\\brave\\Update.exe"
-        },
-        {
             "Name": "Chrome",
             "Path": "${env:ProgramFiles(x86)}\\Google\\Chrome\\Application\\chrome.exe"
         },
@@ -102,8 +98,8 @@
             "Path": "$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Microsoft Office\\Microsoft Outlook 2010.lnk"
         },
         {
-            "Name": "pnagent",
-            "Path": "${env:ProgramFiles(x86)}\\Citrix\\ICA Client\\pnagent.exe"
+            "Name": "citrix",
+            "Path": "$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Citrix\\Receiver.lnk"
         },
         {
             "Name": "pnamain",
@@ -118,8 +114,8 @@
             "Path": "$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Citrix\\Receiver.lnk"
         },
         {
-            "Name": "taskmgr",
-            "Path": "$env:SystemDrive\\SWTOOLS\\SysinternalsSuite\\procexp.exe"
+            "Name": "volume",
+            "Path": "$env:SystemRoot\\System32\\sndvol.exe"
         }
     ],
     "UNCPath": [
@@ -191,6 +187,11 @@
                     "Name": "iexplore",
                     "Action": "Start",
                     "Message": "Start IE Home Page"
+                },
+                {
+                    "Name": "volume",
+                    "Action": "Start",
+                    "Message": "Open Volume Mixer"
                 }
             ],
             "function_after": []
@@ -222,8 +223,8 @@
                     "Message": "Start Citrix Receiver"
                 },
                 {
-                    "Name": "Set-Printer -printerShareName GC92IT252",
-                    "Message": "Set default printer: GC92IT252"
+                    "Name": "Set-Printer -printerShareName GC92IT250",
+                    "Message": "Set default printer: GC92IT250"
                 }
             ]
         }

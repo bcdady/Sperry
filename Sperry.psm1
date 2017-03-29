@@ -238,8 +238,7 @@ function Connect-WiFi {
         }
         else
         {
-          throw ("A fatal error was encountered trying to enable Network Adapter {0} (Device {1})" -f $PSItem.Name,$PSItem.DeviceID)
-#          throw "A fatal error was encountered trying to enable Network Adapter $($PSItem.Name) (Device $($PSItem.DeviceID))"
+          Write-Log -Message ("A fatal error was encountered trying to enable Network Adapter {0} (Device {1})" -f $PSItem.Name,$PSItem.DeviceID) -Verbose
         }
       }
       Start-Sleep -Seconds 1
@@ -460,7 +459,7 @@ function Set-Workplace {
     $MySettings.function_before | ForEach-Object -Process {
       Write-Debug -Message "Function $($PSItem.Name) - Message: $($PSItem.Message)"
       Write-Log -Message "$($PSItem.Message)" -Function $loggingTag
-      & $PSItem.Name -Verbose
+      Invoke-Expression -Command $PSItem.Name
       Start-Sleep -Milliseconds 777
     }
   }
@@ -503,7 +502,7 @@ function Set-Workplace {
 
   $MySettings.function_after | ForEach-Object -Process {
     Write-Log -Message "$($PSItem.Message)" -Function $PSItem.Name
-    & $PSItem.Name
+    Invoke-Expression -Command $PSItem.Name
     Start-Sleep -Milliseconds 777
   }
 
