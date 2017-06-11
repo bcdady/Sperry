@@ -24,10 +24,10 @@ param ()
 New-Variable -Name PSHelpUpdatedDate -Description 'Date/time stamp of the last Update-Help run' -Scope Global -Force
 Write-Output -InputObject 'Importing shared saved state info from Microsoft.PowerShell_state.json to custom object: $PSState'
 try {
-  $Global:PSState = (Get-Content -Path $env:ProgramFiles\WindowsPowerShell\Microsoft.PowerShell_state.json) -join "`n" | ConvertFrom-Json
+    $Global:PSState = (Get-Content -Path $env:PUBLIC\Documents\WindowsPowerShell\Microsoft.PowerShell_state.json -ErrorAction Ignore) -join "`n" | ConvertFrom-Json
 }
 catch {
-  Write-Warning -Message "Critical Error loading PowerShell saved state info from $env:ProgramFiles\WindowsPowerShell\Microsoft.PowerShell_state.json to custom object: `$PSState"
+    Write-Warning -Message "Unable to load PowerShell saved state info from $env:PUBLIC\Documents\WindowsPowerShell\Microsoft.PowerShell_state.json to custom object: `$PSState"
 }   
 
 if ((Get-WmiObject -Class Win32_OperatingSystem -Property Caption).Caption -like '*Windows Server*')
@@ -82,7 +82,7 @@ Function Show-Settings {
       .EXAMPLE
       Show-Settings
       
-      json_description : User costumizations for PowerShell Sperry module.
+      json_description : User customization for PowerShell Sperry module.
       version          : 0.1.6
       updated          : 11-21-2016
       XenApp           : {@{Name=Assyst; QLaunch=GBCI02XA:Assyst}, @{Name=cmd; QLaunch=GBCI02XA:Command Line}, @{Name=Excel;
@@ -125,19 +125,19 @@ function Mount-Path {
   # loop through all defined drive mappings
   $Global:Settings.UNCPath | ForEach-Object {
     $DriveName = $ExecutionContext.InvokeCommand.ExpandString($PSItem.DriveName)
-    $UNCroot   = $ExecutionContext.InvokeCommand.ExpandString($PSItem.FullPath)
+    $PathRoot   = $ExecutionContext.InvokeCommand.ExpandString($PSItem.FullPath)
 
     if (Test-Path -Path ('{0}:\' -f $DriveName)) {
       Write-Warning -Message ('Drive letter {0} already in use.' -f $DriveName)
     }
-    elseif (-not (Test-Path -Path $UNCroot)) {
-      Write-Warning -Message ('Path {0} was not found; unable to map to drive letter {1}' -f $UNCroot, $DriveName)            
+    elseif (-not (Test-Path -Path $PathRoot)) {
+      Write-Warning -Message ('Path {0} was not found; unable to map to drive letter {1}' -f $PathRoot, $DriveName)            
     }
     else
     {
-      Write-Log -Message ('New-PSDrive {0}: {1}' -f $DriveName, $UNCroot) -Function 'Mount-Path'
-      Write-Debug -Message (' New-PSDrive -Persist -Name {0} -Root {1} -PSProvider FileSystem -scope Global' -f $DriveName, $UNCroot)
-      New-PSDrive -Name $DriveName -Root $UNCroot -PSProvider FileSystem -Persist -scope Global -ErrorAction:SilentlyContinue
+      Write-Log -Message ('New-PSDrive {0}: {1}' -f $DriveName, $PathRoot) -Function 'Mount-Path'
+      Write-Debug -Message (' New-PSDrive -Persist -Name {0} -Root {1} -PSProvider FileSystem -scope Global' -f $DriveName, $PathRoot)
+      New-PSDrive -Name $DriveName -Root $PathRoot -PSProvider FileSystem -Persist -scope Global -ErrorAction:SilentlyContinue
       Start-Sleep -Milliseconds 500
     }
   }
@@ -295,36 +295,36 @@ function Get-WiFi {
 }
 
 function Get-IPAddress {
-  <#
-      .SYNOPSIS
-      Returns Adapter description, IP Address, and basic DHCP info.
-      .DESCRIPTION
-      Uses Get-WmiObject -Class Win32_NetworkAdapterConfiguration queries, for IP enabled network adapters, this function returns the IP Addresses (IPv4 and IPv6, if available), default gateway, DNS server list, and adapter description and index.
-      .EXAMPLE
-      PS C:\> Get-IPAddress
-      Get-IPAddress
-      Logging to $env:USERPROFILE\Documents\WindowsPowerShell\log\Get-IPAddress_20150430.log
+<#
+    .SYNOPSIS
+    Returns Adapter description, IP Address, and basic DHCP info.
+    .DESCRIPTION
+    Uses Get-WmiObject -Class Win32_NetworkAdapterConfiguration queries, for IP enabled network adapters, this function returns the IP Addresses (IPv4 and IPv6, if available), default gateway, DNS server list, and adapter description and index.
+    .EXAMPLE
+    PS C:\> Get-IPAddress
+    Get-IPAddress
+    Logging to $env:USERPROFILE\Documents\WindowsPowerShell\log\Get-IPAddress_20150430.log
 
-      SiteName           : Unrecognized
-      AdapterHost        : ComputerName
-      Gateway            : {192.168.1.11}
-      IPAddress          : {192.168.1.106}
-      DNSServers         : {192.168.0.1, 208.67.220.220, 208.67.222.222}
-      AdapterDescription : Intel(R) Wireless-N 7260
-      .EXAMPLE
-      PS C:\> Get-IPAddress.IPAddress
-      # Returns only the IP Address(es) of DHCP enabled adapters, as a string
-      10.10.101.123
-      .NOTES
-      NAME        :  Get-IPAddress
-      VERSION     :  1.0.1
-      LAST UPDATED:  5/1/2015
-      AUTHOR      :  Bryan Dady
-      .INPUTS
-      None
-      .OUTPUTS
-      Write-Log
-  #>
+    SiteName           : Unrecognized
+    AdapterHost        : ComputerName
+    Gateway            : {192.168.1.11}
+    IPAddress          : {192.168.1.106}
+    DNSServers         : {192.168.0.1, 208.67.220.220, 208.67.222.222}
+    AdapterDescription : Intel(R) Wireless-N 7260
+    .EXAMPLE
+    PS C:\> Get-IPAddress.IPAddress
+    # Returns only the IP Address(es) of DHCP enabled adapters, as a string
+    10.10.101.123
+    .NOTES
+    NAME        :  Get-IPAddress
+    VERSION     :  1.0.1
+    LAST UPDATED:  5/1/2015
+    AUTHOR      :  Bryan Dady
+    .INPUTS
+    None
+    .OUTPUTS
+    Write-Log
+#>
   New-Variable -Name OutputObj -Description 'Object to be returned by this function' -Scope Private
   Get-WmiObject -Class Win32_NetworkAdapterConfiguration  -Filter 'IpEnabled = True AND DhcpEnabled = True' |
   ForEach-Object -Process {
@@ -369,51 +369,12 @@ function Redo-DHCP {
   return Get-IPAddress
 }
 
-function Start-CitrixReceiver {
-
-  Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name # Log start time stamp
-
-  if (Test-LocalAdmin) {
-    Start-Service -Name RadeSvc -ErrorAction:SilentlyContinue # Citrix Streaming Service
-    Start-Service -Name RSCorSvc -ErrorAction:SilentlyContinue # Citrix System Monitoring Agent
-  } else {
-    if ( -not (Get-Process -Name Receiver -ErrorAction SilentlyContinue))
-    {
-      Write-Log -Message 'Need to elevate privileges for proper completion ... requesting admin credentials.' -Function $MyInvocation.MyCommand.Name
-      Start-Sleep -Milliseconds 333
-      # Before we launch an elevated process, check (via function) that UAC is conveniently set
-      Set-UAC
-      Open-AdminConsole -Command {Start-CitrixReceiver} 
-    }
-    else
-    {
-      Write-Log -Message 'Confirmed Citrix Receiver is running.' -Function $MyInvocation.MyCommand.Name
-    }
-  }
-
-  # Confirm Citrix XenApp shortcuts are available, and then launch frequently used apps
-  if (test-path -Path "$env:USERPROFILE\Desktop\Assyst.lnk" -PathType Leaf) {
-    Write-Output -InputObject 'Starting cmd'
-    Start-XenApp -Qlaunch 'cmd'
-    Write-Output -InputObject 'Pausing for Citrix (XenApp) session to load ...'
-    Start-Sleep -Seconds 60
-
-    Write-Output -InputObject 'Starting Firefox (XenApp)'
-    xa_firefox
-  } else {
-    Write-Log -Message 'Unable to locate XenApp shortcuts. Please check network connectivity to workplace resources and try again.' -Function $MyInvocation.MyCommand.Name
-  }
-
-  Show-Progress -msgAction 'Stop' -msgSource $MyInvocation.MyCommand.Name # Log end time stamp
-  return $true # (Get-Process -Name Receiver).Description
-}
-
 function Set-UAC {
   Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name # Log start time stamp
   # Check current UAC level via registry
   # We want ConsentPromptBehaviorAdmin = 5
   # thanks to http://forum.sysinternals.com/display-uac-status_topic18490_page3.html
-  if (((get-itemproperty -path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -name 'ConsentPromptBehaviorAdmin').ConsentPromptBehaviorAdmin) -ne 5)
+  if (((Get-ItemProperty -path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -name 'ConsentPromptBehaviorAdmin').ConsentPromptBehaviorAdmin) -ne 5)
   { # prompt for UAC update
     Write-Log -Message 'Opening User Account Control Settings dialog ...' -Function $MyInvocation.MyCommand.Name
     & $env:SystemDrive\Windows\System32\UserAccountControlSettings.exe
@@ -433,7 +394,7 @@ function Set-Workplace {
         Mandatory,
         Position=0,
         ValueFromPipelineByPropertyName=$true,
-        HelpMessage='Specify workplace zone, or context. Accepts Work or Home.'
+        HelpMessage='Specify workplace zone, or context, as defined in Sperry.json.'
     )]
     [String]
     [alias('mode','scope')]
@@ -511,6 +472,26 @@ function Set-Workplace {
   Show-Progress -msgAction Stop -msgSource $loggingTag  # Log end time stamp
 
   return ('Ready for {0} work' -f $zone)
+}
+
+Function Open-Browser
+{
+  [CmdletBinding()]
+  param (
+    [Parameter(
+        Mandatory,
+        Position=0,
+        ValueFromPipelineByPropertyName=$true,
+        HelpMessage='URL to open in default web browser.'
+    )]
+    [ValidatePattern({^https?:\/\/?.+\.\w{2,6}})]
+    [String]
+    [alias('address','site')]
+    $URL
+  )
+
+  Write-Verbose -Message "Start-Process -FilePath $URL"
+  Start-Process -FilePath $URL
 }
 
 Function Show-DesktopDocuments

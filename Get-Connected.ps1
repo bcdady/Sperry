@@ -22,10 +22,7 @@ function Set-NetConnStatus {
   )
 
   # Set default value for variables
-  $IsAdmin      = $false
   $AdapterState = 'Disabled'
-  $RejectAll    = $false
-  $ConfirmAll   = $false
 
   Write-Output -InputObject ''
   Write-Verbose -Message ('{0}: Starting {1}' -f (Get-Date), $MyInvocation.MyCommand.Name)
@@ -46,167 +43,166 @@ function Set-NetConnStatus {
       12 = 'Credentials Required'
     }
 
-    if ($ListAvailable)
-    {
-      Write-Output -InputObject ''
-      Write-Output -InputObject 'Listing available Network Connections by ID:'
-      Get-WmiObject -Class Win32_NetworkAdapter -Filter "PhysicalAdapter=True" | Select-Object -Property Name,NetConnectionID | Sort-Object -Unique -Property NetConnectionID
-      Write-Output -InputObject ''
-    }
-    else
-    {
-      Write-Output -InputObject ''
-      Write-Output -InputObject ("Getting details for Network Connection '{0}'" -f $ConnectionID)
+    if ($Global:onServer) {
+      if ($ListAvailable) {
+        Write-Output -InputObject ''
+        Write-Output -InputObject 'Listing available Network Connections by ID:'
+        Get-WmiObject -Class Win32_NetworkAdapter -Filter "PhysicalAdapter=True" | Select-Object -Property Name,NetConnectionID | Sort-Object -Unique -Property NetConnectionID
+        Write-Output -InputObject ''
+      } else {
+        Write-Output -InputObject ''
+        Write-Output -InputObject ("Getting details for Network Connection '{0}'" -f $ConnectionID)
 
-      $NetAdapter     = Get-WmiObject -Class Win32_NetworkAdapter -Filter ("PhysicalAdapter=True AND NetConnectionID = '{0}'" -f ($ConnectionID))
-      $NetAdapterName = $NetAdapter.Name
-      $CurStatText    = $($NetConnectionStatus.[int]($NetAdapter.NetConnectionStatus))
+        $NetAdapter     = Get-WmiObject -Class Win32_NetworkAdapter -Filter ("PhysicalAdapter=True AND NetConnectionID = '{0}'" -f ($ConnectionID))
+        $NetAdapterName = $NetAdapter.Name
+        $CurStatText    = $($NetConnectionStatus.[int]($NetAdapter.NetConnectionStatus))
 
-      try
-      {
-        $IPAddress     = (Get-IPAddress).IPAddress
-        $IPAdapterName = (Get-IPAddress).AdapterDescription
-      }
-      catch
-      {
-        Write-Debug -Message 'Failed to retrieve an IP address (via Get-IPaddress function)'
-        $IPAddress     = $null
-        $IPAdapterName = $null
-      }
-      Write-Verbose -Message ('Network Adapter {0} is connected to IP Address is {1}' -f $IPAdapterName, $IPAddress)
-      # force enable
-      if ($Enable)
-      {
-        $AdapterState = 'Enabled'
-      }
-      # Determine end state the NetworkAdapter (as identified by $ConnectionID) should be in
-      elseif (((Get-WmiObject -Class Win32_Battery -Property BatteryStatus).BatteryStatus -eq 2))
-      {
-        if ($IPAddress)
+        try
         {
-          Write-Verbose -Message 'Computer is plugged in (charging)'
-          if ($IPAdapterName -eq $NetAdapterName)
-          {
-            Write-Verbose -Message 'Confirmed IP Address is associated with the specified adapter. No changes will be initiated.'
-          }
-          else
-          {
-            Write-Verbose -Message ('IP Address is associated with a different adapter. {0} should be Disabled.' -f $NetAdapterName)                        
-            $AdapterState = 'Disabled'
-          }
+          $IPAddress     = (Get-IPAddress).IPAddress
+          $IPAdapterName = (Get-IPAddress).AdapterDescription
         }
-        else
+        catch
         {
-          # enable if no ip address
-          Write-Verbose -Message ('Computer is plugged in (charging), but has no IP Address. {0} should be Enabled.' -f $NetAdapterName)
-          $AdapterState = 'Enabled'
-        }                
-      }
-      else
-      {
-        Write-Verbose -Message "Computer does NOT seem to be plugged in (charging)."
-        if ($IPAddress)
-        {
-          Write-Verbose -Message ('Computer has IP Address {0}. No changes will be initiated.' -f $IPAddress)
+          Write-Debug -Message 'Failed to retrieve an IP address (via Get-IPaddress function)'
+          $IPAddress     = $null
+          $IPAdapterName = $null
         }
-        else
-        # status quo
+        Write-Verbose -Message ('Network Adapter {0} is connected to IP Address is {1}' -f $IPAdapterName, $IPAddress)
+        # force enable
+        if ($Enable)
         {
-          Write-Verbose -Message 'Computer has no IP Address. $NetAdapterName will be Enabled.'
           $AdapterState = 'Enabled'
         }
-      }
-    }
-
-  # Make it so
-  if (-not $ListAvailable)
-  {
-    if (-not $NetAdapter)
-    {
-      Write-Error -Message ("Unable to find a Network Connection named '{0}'" -f ($ConnectionID))
-    }
-    else
-    {
-      Write-Verbose -Message ("Network Connection '{0}' is {1}" -f $ConnectionID, $CurStatText)
-      Write-Debug -Message ("{0} is {1} ; {2} is {3}" -f '$AdapterState', $AdapterState, '$NetAdapter.NetEnabled', ($NetAdapter.NetEnabled))
-      if (($AdapterState -eq 'Disabled') -and $($NetAdapter.NetEnabled))
-      {
-        Write-Verbose -Message ('Setting Network Connection {0} to {1}' -f $NetAdapter.Name, $AdapterState)
-        if($PSCmdlet.ShouldProcess( ('Disabling adapter {0}' -f $ConnectionID), ('Disable adapter {0}`?' -f $ConnectionID), ('Disabling adapter {0}' -f $ConnectionID) ))
+        # Determine end state the NetworkAdapter (as identified by $ConnectionID) should be in
+        elseif (((Get-WmiObject -Class Win32_Battery -Property BatteryStatus).BatteryStatus -eq 2))
         {
-          # Now we should make a change, so check if we have permission
-          if (-not (Test-LocalAdmin))
+          if ($IPAddress)
           {
-            Write-Output -InputObject 'Changing network adapter settings requires elevated permissions. Attempting to re-run this function with admin RunAs.'
-            try
+            Write-Verbose -Message 'Computer is plugged in (charging)'
+            if ($IPAdapterName -eq $NetAdapterName)
             {
-              Set-UAC
-            }
-            catch
-            {
-              Write-Warning -Message 'Failed to invoke Set-UAC function.'
-            }
-
-            Write-Verbose -Message 'Elevating via Open-AdminConsole'
-            Open-AdminConsole -Command {Set-NetConnStatus}
-          }
-          else
-          {
-            $Return = $NetAdapter.Disable()
-            if ($Return.ReturnValue -ne 0)
-            {
-              Write-Verbose -Message ('Unable to disable wireless, the adapter returned: {0}' -f $Return.ReturnValue)
+              Write-Verbose -Message 'Confirmed IP Address is associated with the specified adapter. No changes will be initiated.'
             }
             else
             {
-              Write-Verbose -Message ('Wireless adapter disabled: {0}' -f $Return.ReturnValue)
+              Write-Verbose -Message ('IP Address is associated with a different adapter. {0} should be Disabled.' -f $NetAdapterName)                        
+              $AdapterState = 'Disabled'
             }
-          }
-        }
-      }
-      elseif (($AdapterState -eq 'Enabled') -and -not $($NetAdapter.NetEnabled))
-      {
-        Write-Verbose -Message ('Setting network adapter: {0} to {1}' -f $NetAdapter.Name, $AdapterState)
-        if($PSCmdlet.ShouldProcess( ('Enabling adapter {0}' -f $ConnectionID), ('Enable adapter {0}`?' -f $ConnectionID), ('Enabling adapter {0}' -f $ConnectionID) ))
-        {
-          # Now we should make a change, so check if we have permission
-          if (-not (Test-LocalAdmin))
-          {
-            try
-            {
-              Set-UAC
-            }
-            catch
-            {
-              Write-Warning -Message 'Failed to invoke Set-UAC function.'
-            }
-
-            Write-Verbose -Message 'Elevating via Open-AdminConsole'
-            Open-AdminConsole -Command {Set-NetConnStatus}
           }
           else
           {
-            $Return = $NetAdapter.Enable()
-            if ($Return.ReturnValue -ne 0)
-            {
-              Write-Warning -Message ('Unable to enable wireless, the adapter returned: {0}' -f $Return.ReturnValue)
-            }
-            else
-            {
-              Write-Output -InputObject ('Wireless adapter enabled: {0}' -f $Return.ReturnValue)
-            }
+            # enable if no ip address
+            Write-Verbose -Message ('Computer is plugged in (charging), but has no IP Address. {0} should be Enabled.' -f $NetAdapterName)
+            $AdapterState = 'Enabled'
+          }                
+        }
+        else
+        {
+          Write-Verbose -Message "Computer does NOT seem to be plugged in (charging)."
+          if ($IPAddress)
+          {
+            Write-Verbose -Message ('Computer has IP Address {0}. No changes will be initiated.' -f $IPAddress)
+          }
+          else
+          # status quo
+          {
+            Write-Verbose -Message 'Computer has no IP Address. $NetAdapterName will be Enabled.'
+            $AdapterState = 'Enabled'
           }
         }
       }
-      else
-      {
-        Write-Verbose -Message ('Wireless adapter will be left as {0}, {1}' -f $AdapterState, $CurStatText) -Verbose
-      }
 
-      # Double-check that WiFi was changed or otherwise is now in desired state
-      Get-WmiObject -Class Win32_NetworkAdapter -Filter ("PhysicalAdapter=True AND NetConnectionID = '{0}'" -f $ConnectionID) | Select-Object -Property @{LABEL='Adapter/Device Name'; EXPRESSION={$PSItem.Name}},@{LABEL='Network Connection Name'; EXPRESSION={$PSItem.NetConnectionID}},@{LABEL='Status'; EXPRESSION={$($NetConnectionStatus.[int]($PSItem.NetConnectionStatus))}},@{LABEL='Enabled'; EXPRESSION={$PSItem.NetEnabled}}
+      # Make it so
+      if (-not $ListAvailable)
+      {
+        if (-not $NetAdapter)
+        {
+          Write-Error -Message ("Unable to find a Network Connection named '{0}'" -f ($ConnectionID))
+        }
+        else
+        {
+          Write-Verbose -Message ("Network Connection '{0}' is {1}" -f $ConnectionID, $CurStatText)
+          Write-Debug -Message ("{0} is {1} ; {2} is {3}" -f '$AdapterState', $AdapterState, '$NetAdapter.NetEnabled', ($NetAdapter.NetEnabled))
+          if (($AdapterState -eq 'Disabled') -and $($NetAdapter.NetEnabled))
+          {
+            Write-Verbose -Message ('Setting Network Connection {0} to {1}' -f $NetAdapter.Name, $AdapterState)
+            if($PSCmdlet.ShouldProcess( ('Disabling adapter {0}' -f $ConnectionID), ('Disable adapter {0}`?' -f $ConnectionID), ('Disabling adapter {0}' -f $ConnectionID) ))
+            {
+              # Now we should make a change, so check if we have permission
+              if (-not (Test-LocalAdmin))
+              {
+                Write-Output -InputObject 'Changing network adapter settings requires elevated permissions. Attempting to re-run this function with admin RunAs.'
+                try
+                {
+                  Set-UAC
+                }
+                catch
+                {
+                  Write-Warning -Message 'Failed to invoke Set-UAC function.'
+                }
+
+                Write-Verbose -Message 'Elevating via Open-AdminConsole'
+                Open-AdminConsole -Command {Set-NetConnStatus}
+              }
+              else
+              {
+                $Return = $NetAdapter.Disable()
+                if ($Return.ReturnValue -ne 0)
+                {
+                  Write-Verbose -Message ('Unable to disable wireless, the adapter returned: {0}' -f $Return.ReturnValue)
+                }
+                else
+                {
+                  Write-Verbose -Message ('Wireless adapter disabled: {0}' -f $Return.ReturnValue)
+                }
+              }
+            }
+          }
+          elseif (($AdapterState -eq 'Enabled') -and -not $($NetAdapter.NetEnabled))
+          {
+            Write-Verbose -Message ('Setting network adapter: {0} to {1}' -f $NetAdapter.Name, $AdapterState)
+            if($PSCmdlet.ShouldProcess( ('Enabling adapter {0}' -f $ConnectionID), ('Enable adapter {0}`?' -f $ConnectionID), ('Enabling adapter {0}' -f $ConnectionID) ))
+            {
+              # Now we should make a change, so check if we have permission
+              if (-not (Test-LocalAdmin))
+              {
+                try
+                {
+                  Set-UAC
+                }
+                catch
+                {
+                  Write-Warning -Message 'Failed to invoke Set-UAC function.'
+                }
+
+                Write-Verbose -Message 'Elevating via Open-AdminConsole'
+                Open-AdminConsole -Command {Set-NetConnStatus}
+              }
+              else
+              {
+                $Return = $NetAdapter.Enable()
+                if ($Return.ReturnValue -ne 0)
+                {
+                  Write-Warning -Message ('Unable to enable wireless, the adapter returned: {0}' -f $Return.ReturnValue)
+                }
+                else
+                {
+                  Write-Output -InputObject ('Wireless adapter enabled: {0}' -f $Return.ReturnValue)
+                }
+              }
+            }
+          }
+          else
+          {
+            Write-Verbose -Message ('Wireless adapter will be left as {0}, {1}' -f $AdapterState, $CurStatText) -Verbose
+          }
+
+          # Double-check that WiFi was changed or otherwise is now in desired state
+          Get-WmiObject -Class Win32_NetworkAdapter -Filter ("PhysicalAdapter=True AND NetConnectionID = '{0}'" -f $ConnectionID) | Select-Object -Property @{LABEL='Adapter/Device Name'; EXPRESSION={$PSItem.Name}},@{LABEL='Network Connection Name'; EXPRESSION={$PSItem.NetConnectionID}},@{LABEL='Status'; EXPRESSION={$($NetConnectionStatus.[int]($PSItem.NetConnectionStatus))}},@{LABEL='Enabled'; EXPRESSION={$PSItem.NetEnabled}}
+        }
+      }
     }
-  }
       
   Write-Output -InputObject ''
   Write-Verbose -Message ('{0}: Ending {1}' -f (Get-Date), $MyInvocation.MyCommand.Name)
@@ -261,14 +257,14 @@ function Set-NetConnStatus {
 
 Write-Verbose -Message 'Declaring function Get-NetConnStatus'
 function Get-NetConnStatus {
-  [CmdletBinding(SupportsShouldProcess)]
+  [CmdletBinding()]
   Param
   (
     [Parameter(
         Position=0
     )]
     [string]
-    $ConnectionID = 'Wireless'
+    $ConnectionID
     ,
     [switch]
     $ListAvailable
@@ -293,7 +289,11 @@ function Get-NetConnStatus {
     Write-Output -InputObject ''
     Write-Verbose -Message ('{0}: Starting {1}' -f (Get-Date), $MyInvocation.MyCommand.Name)
 
-    if ($ListAvailable)
+    if ($null -eq $(Get-Variable -Name ConnectionID -ErrorAction SilentlyContinue)) {
+        $ListAvailable -eq $true
+    }
+
+    if (($null -eq $ConnectionID) -or ($ListAvailable))
     {
         Write-Verbose -Message 'Listing available Network Connections by Name'
         Get-WmiObject -Class Win32_NetworkAdapter -Filter "PhysicalAdapter=True" | Select-Object -Property Name,NetConnectionID | Sort-Object -Unique -Property NetConnectionID
@@ -302,8 +302,7 @@ function Get-NetConnStatus {
     {
         Write-Verbose -Message ('Getting details for Network Connection {0}' -f $ConnectionID)
 
-        $NetAdapter    = Get-WmiObject -Class Win32_NetworkAdapter -Filter ("PhysicalAdapter=True AND NetConnectionID = '{0}'" -f $ConnectionID)
-        $NetAdapterName = $NetAdapter.Name
+        $NetAdapter  = Get-WmiObject -Class Win32_NetworkAdapter -Filter ("PhysicalAdapter=True AND NetConnectionID = '{0}'" -f $ConnectionID)
         $CurStatText = $($NetConnectionStatus.[int]($NetAdapter.NetConnectionStatus))
 
         if (-not $NetAdapter)

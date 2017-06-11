@@ -1,5 +1,5 @@
 {
-    "json_description": "User costumizations for PowerShell Sperry module.",
+    "json_description": "User customization for PowerShell Sperry module.",
     "version": "0.1.6",
     "updated": "11-21-2016",
     "XenApp": [
@@ -90,15 +90,15 @@
             "Path": "$env:ProgramFiles\\Internet Explorer\\iexplore.exe"
         },
         {
-            "Name": "onenote",
+            "Name": "OneNote",
             "Path": "$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Microsoft Office\\Microsoft OneNote 2010.lnk"
         },
         {
-            "Name": "outlook",
+            "Name": "Outlook",
             "Path": "$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Microsoft Office\\Microsoft Outlook 2010.lnk"
         },
         {
-            "Name": "citrix",
+            "Name": "Citrix",
             "Path": "$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Citrix\\Receiver.lnk"
         },
         {
@@ -219,12 +219,12 @@
             "BrowserProgid": "IE.HTTPS",
             "function_after": [
                 {
-                    "Name": "Start-CitrixReceiver",
-                    "Message": "Start Citrix Receiver"
+                    "Name": ". .\\Scripts\\Start-XenApp.ps1",
+                    "Message": "Start Citrix Session"
                 },
                 {
-                    "Name": "Set-Printer -printerShareName GC92IT250",
-                    "Message": "Set default printer: GC92IT250"
+                    "Name": "Start-CitrixSession",
+                    "Message": "Start Citrix Session"
                 }
             ]
         }

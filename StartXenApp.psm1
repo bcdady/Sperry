@@ -1,5 +1,7 @@
 ﻿#Requires -Version 2
+# Enhanced May 2017 to support XenApp 7 and StoreFront
 
+Write-Verbose -Message 'Declaring function Start-XenApp'
 function Start-XenApp
 {
 <#
@@ -31,17 +33,15 @@ function Start-XenApp
         LAST UPDATED:  4/9/2015
         AUTHOR      :  Bryan Dady
 #>
-    [CmdletBinding(DefaultParameterSetName = 'Launch')]
-    #    [OutputType([int])]
+    [CmdletBinding()]
     Param (
-        # PNArgs specifies whether PNAgent.exe should attempt to reconnect an existing session, Qlaunch a new app, or other supported behavior
         [Parameter(
             Position = 0,
             ParameterSetName = 'Mode'
 		)]
-        [Alias('args','XenApp','launch','start','open')]
+        [Alias('args','XenApp','qlaunch','start','open')]
         [String]
-        $Qlaunch = '-ListAvailable',
+        $Launch,
 
         [Parameter(
             Position = 3,
@@ -59,7 +59,7 @@ function Start-XenApp
         [ValidateNotNullOrEmpty()]
         [Alias('end', 'close', 'halt', 'exit', 'stop')]
         [switch]
-        $Terminatewait,
+        $Terminate,
 
         [Parameter(
             Position = 2,
@@ -71,80 +71,169 @@ function Start-XenApp
         $ListAvailable
 
     )
-
-    # Set pnagent path string
-    $Global:pnagent = "${env:ProgramFiles(x86)}\Citrix\ICA Client\pnagent.exe"
     Show-Progress -msgAction Start -msgSource $PSCmdlet.MyInvocation.MyCommand.Name
 
-    # Load up $Setting.XenApp from sperry.json into Script scope $XenApps hashtable
+    Write-Debug -Message '$PSBoundParameters:'
+    Write-Debug -Message $PSBoundParameters
+    Write-Debug -Message '$PSBoundParameters.Keys:'
+    Write-Debug -Message $PSBoundParameters.Keys
+    Write-Debug -Message '$PSBoundParameters.Values:'
+    Write-Debug -Message $PSBoundParameters.Values
+
+    # Detect local Citrix Receiver version ... 14.7 = 4.7
+    $file = "${env:ProgramFiles(x86)}\Citrix\ICA Client\concentr.exe"
+    if (Test-Path -Path $file) {
+        $CitrixVer = (Get-Command -Name $file).FileVersionInfo.ProductVersion
+        Write-Verbose -Message "Detected Citrix receiver version $CitrixVer"
+    } else {
+        Write-Verbose -Message "Failed to detected Citrix receiver version"
+        throw "Failed to locate Citrix file $file, to detect Product Version"
+    }
+
+    # Default GoForLaunch is false; switched to $true, if a valid app to Launch is checked.
+    $Script:GoForLaunch = $false
     $Script:XenApps = @{}
 
-    if ([bool]$($Settings.XenApp))
-    {
-        $Settings.XenApp | ForEach-Object {
-            Write-Debug -Message "$($PSItem.Name) = $($ExecutionContext.InvokeCommand.ExpandString($PSItem.Qlaunch))"
-            $script:XenApps.Add("$($PSItem.Name)",$ExecutionContext.InvokeCommand.ExpandString($PSItem.Qlaunch))
-        }
-    }
-    else
-    {
-        throw "Unable to load global settings from `$Settings object. Perhaps there was an error loading from sperry.json."
-    }
+    if ($CitrixVer -lt 14.2 ) {
+        # Set XenApp 6 edition PNAgent ICA client
+        Write-Verbose -Message 'Setting $ICAclient to pnagent.exe'
+        Global:ICAClient = "${env:ProgramFiles(x86)}\Citrix\ICA Client\pnagent.exe"
+        #  Load up $Setting.XenApp from sperry.json into Script scope $XenApps hashtable
 
-    if ($PSBoundParameters.ContainsKey('Qlaunch'))
-    {
-        if ($XenApps.Keys -contains $Qlaunch)
+        if (($Script:XenApps -eq 0) -and ([bool]$($Settings.XenApp)))
         {
-            $Private:Arguments = '/CitrixShortcut: (1)', "/QLaunch ""$($XenApps.$Qlaunch)"""
+            Write-Verbose -Message 'Reading available XenApp definitions from $Settings'
+            $Settings.XenApp | ForEach-Object {
+                Write-Verbose -Message "$($PSItem.Name) = $($ExecutionContext.InvokeCommand.ExpandString($PSItem.Qlaunch))"
+                Write-Debug -Message "$($PSItem.Name) = $($ExecutionContext.InvokeCommand.ExpandString($PSItem.Qlaunch))"
+                $script:XenApps.Add("$($PSItem.Name)",$ExecutionContext.InvokeCommand.ExpandString($PSItem.Qlaunch))
+            }
         }
         else
         {
-            # if a shortcut key is not defined in $XenApps, pass the full 'string' e.g. GBCI02XA:Internet Explorer
-            $Private:Arguments = '/CitrixShortcut: (1)', '/QLaunch', """GBCI02XA:$Qlaunch"""
-            # possible RFE: enhance string whitespace handling of $Qlaunch
+            throw "Unable to load global settings from `$Settings object. Perhaps there was an error loading from sperry.json."
         }
-        # /Terminate Closes out PNAgent and any open sessions
-        # /terminatewait  Closes out PNAgent and any open sessions; Logs off
-        # /Configurl  /param:URL  (useful if you haven't set up the client as part of the install)
-        # /displaychangeserver
-        # /displayoptions
-        # /logoff
-        # /refresh
-        # /disconnect
-        # /reconnect
-        # /reconnectwithparam
-        # /qlaunch  (syntax example pnagent.exe /Qlaunch "Farm1:Calc")
+    } else {
+        # Make StoreFront / SelfService default ICA client
+        Write-Verbose -Message 'Setting $ICAclient to SelfService.exe'
+        $Global:ICAClient = "${env:ProgramFiles(x86)}\Citrix\ICA Client\SelfServicePlugin\SelfService.exe"
+        # Pull available Citrix apps details from local registry
+#        if ($Script:XenApps -eq 0) {
+        Write-Verbose -Message 'Reading available XenApp definitions from registry'
+        Get-ChildItem -LiteralPath HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall | Where-Object -FilterScript {$PSItem.Name -like "*glacier*"} | `
+        ForEach-Object -Process {$script:XenApps.Add($($PSItem.GetValue('DisplayName')),$($PSItem.GetValue('LaunchString')))}
+#        }
+    }
 
-        # As long as we have non-0 arguments, run it using Start-Process and arguments list
-        if ($Private:Arguments -ne $NULL)
-        {
-            Write-Log -Message "Starting $($Arguments.Replace('/CitrixShortcut: (1) /QLaunch ',''))" -Function $PSCmdlet.MyInvocation.MyCommand.Name -Verbose
-            # $pnagent
-            Start-Process $pnagent -ArgumentList "$Private:Arguments" -Verbose
-        }
-        else
-        {
-            Write-Log -Message "Unrecognized XenApp shortcut: $XenApp`nPlease try again with one of the following:" -Function $PSCmdlet.MyInvocation.MyCommand.Name
-            $XenApps.Keys
-            break
+    # Process arguments
+    if ($Script:XenApps.Keys -contains $Launch)
+    {
+        Write-Verbose -Message "Matched `$Launch ('$Launch') in `$XenApps.Keys"
+        if ($CitrixVer -lt 14.2) {
+            $Private:Arguments = '/CitrixShortcut: (1)', "/QLaunch ""$($Script:XenApps.$Launch)"""
+        } else {
+            $Private:Arguments = "-qlaunch ""$Launch"""
         }
     }
-    elseif ($PSBoundParameters.ContainsKey('Reconnect'))
-    {
-        Write-Log -Message 'Start pnagent.exe /reconnect' -Function $PSCmdlet.MyInvocation.MyCommand.Name
-        Start-Process $pnagent -ArgumentList '/reconnect'
+    elseif ($Launch.Length -ge 2) {
+        # if a shortcut key is not defined in $XenApps, pass the full 'string' e.g. GBCI02XA:Internet Explorer
+        Write-Verbose -Message "Attempting to Launch ('$Launch')"
+        if ($CitrixVer -lt 14.2) {
+            $Private:Arguments = '/CitrixShortcut: (1)', '/QLaunch', """GBCI02XA:$Launch"""
+            # possible RFE: enhance string whitespace handling of $Launch
+        } else {
+            $Private:Arguments = "-qlaunch ""$Launch"""
+        }
     }
-    elseif ($PSBoundParameters.ContainsKey('Terminatewait'))
+    # For SelfService.exe // These parameters are available only in Receiver 4.2 and later versions.
+    # https://support.citrix.com/article/CTX200337
+<#
+    SelfService.exe –rmPrograms
+    Clean up shortcuts and stub programs for current user.
+
+    SelfService.exe –reconnectapps
+    Reconnect to any existing sessions the user has. By default happens at launch time and app refresh time.
+
+    SelfService.exe –poll  Contact the server to refresh application details. 
+    SelfService.exe –ipoll  Contact the server to refresh application details as in –poll, but if no authentication context is available, prompt the user for credentials. 
+
+    SelfService.exe –exit Exit from SelfService.exe. 
+    SelfService.exe –qlaunch “appname” See Note 1. 
+    Launch applications.
+        Note: This parameter can be customized with <appname> <argument>. Publish the application with “%*” in command line parameter.   Example: To launch published application named "IE11" opening http://www.citrix.com, use:
+    selfservice.exe -qlaunch IE11 http://www.citrix.com
+
+    SelfService.exe –qlogon
+    Reconnect any existing apps for current user.
+
+    SelfService.exe –terminateuser “user_name”
+    Disconnect applications for a specific user.
+
+    # ============================================
+    # For PNAgent.exe
+    # /Terminate Closes out PNAgent and any open sessions
+    # /terminatewait  Closes out PNAgent and any open sessions; Logs off
+    # /Configurl  /param:URL  (useful if you haven't set up the client as part of the install)
+    # /displaychangeserver
+    # /displayoptions
+    # /logoff
+    # /refresh
+    # /disconnect
+    # /reconnect
+    # /reconnectwithparam
+    # /qlaunch  (syntax example pnagent.exe /Qlaunch "Farm1:Calc")
+#>
+
+    if ($PSBoundParameters.ContainsKey('Reconnect'))
     {
-        Write-Log -Message 'Start pnagent.exe /terminatewait' -Function $PSCmdlet.MyInvocation.MyCommand.Name
-        Start-Process $pnagent -ArgumentList '/terminatewait'
+        Write-Verbose -Message '($PSBoundParameters.ContainsKey(''Reconnect''))'
+        Write-Verbose -Message ($PSBoundParameters.ContainsKey('Reconnect'))
+        if ($CitrixVer -lt 14.2 ) {
+            Write-Log -Message 'Start pnagent.exe /reconnect' -Function $PSCmdlet.MyInvocation.MyCommand.Name
+            Start-Process $Global:ICAClient -ArgumentList '/reconnect' -PassThru
+        } else {
+            Write-Log -Message 'Start SelfService.exe –reconnectapps' -Function $PSCmdlet.MyInvocation.MyCommand.Name
+            Start-Process $Global:ICAClient -ArgumentList '–reconnectapps' -PassThru
+        }
+    }
+    elseif ($PSBoundParameters.ContainsKey('Terminate'))
+    {
+        Write-Verbose -Message '($PSBoundParameters.ContainsKey(''Terminate''))'
+        Write-Verbose -Message ($PSBoundParameters.ContainsKey('Terminate'))
+        if ($CitrixVer -lt 14.2 ) {
+            Write-Log -Message 'Start pnagent.exe /TerminateWait' -Function $PSCmdlet.MyInvocation.MyCommand.Name
+            Start-Process $Global:ICAClient -ArgumentList '/terminatewait' -PassThru
+        } else {
+            Write-Log -Message 'Start SelfService.exe -Terminate' -Function $PSCmdlet.MyInvocation.MyCommand.Name
+            Start-Process $Global:ICAClient -ArgumentList '-terminate' -PassThru
+        }
     }
     elseif ($PSBoundParameters.ContainsKey('ListAvailable'))
     {
-        Write-Log -Message '`nEnumerating all available `$XenApps Keys' -Function $PSCmdlet.MyInvocation.MyCommand.Name
-        $XenApps |
-        Sort-Object -Property Name |
-        Format-Table -AutoSize
+        Write-Log -Message '`nEnumerating all available `$XenApps Keys' -Function $PSCmdlet.MyInvocation.MyCommand.Name -Verbose
+        $Script:XenApps.Keys # | Sort-Object -Property Name | Format-Table -AutoSize
+    } else {
+        $Script:GoForLaunch = $true
+    }
+
+    write-Debug -Message "At the end, `$Private:Arguments is $Private:Arguments"
+
+    # As long as we have non-0 arguments, run it using Start-Process and arguments list
+    if ($Script:GoForLaunch) {
+        if ($Private:Arguments -ne $NULL)
+        {
+            $Message = "Starting $($Arguments.Replace('/CitrixShortcut: (1) /QLaunch ',''))"
+            $Message = "Starting $($Arguments.Replace('-qlaunch ',''))"
+            Write-Log -Message $Message -Function $PSCmdlet.MyInvocation.MyCommand.Name -Verbose
+            Start-Process $Global:ICAClient -ArgumentList "$Private:Arguments" -Verbose
+        }
+        else
+        {
+            Write-Log -Message "Unrecognized XenApp shortcut: $XenApp`n`tPlease try again with one of the following:" -Function $PSCmdlet.MyInvocation.MyCommand.Name -Verbose
+            Write-Debug -Message $Script:XenApps.Keys
+            $Script:XenApps.Keys # | Sort-Object -Property Name | Format-Table -AutoSize
+            break
+        }
     }
 
     Show-Progress -msgAction Stop -msgSource $PSCmdlet.MyInvocation.MyCommand.Name
