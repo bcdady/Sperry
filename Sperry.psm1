@@ -411,44 +411,35 @@ function Set-Workplace {
   Write-Log -Message "Loading settings for Workplace $zone as defined in $SettingsFileName." -Function $loggingTag -Verbose
   $MySettings = $Global:Settings.Workplace | Where-Object -FilterScript {$PSItem.Name -eq $zone}
 
-  if (-not ($MySettings.function_before))
-  {
-    Write-Log '$MySettings.function_before was not found.' -Function $loggingTag
-  }
-  else
-  {
+  if ($MySettings.function_before) {
     $MySettings.function_before | ForEach-Object -Process {
       Write-Debug -Message "Function $($PSItem.Name) - Message: $($PSItem.Message)"
       Write-Log -Message "$($PSItem.Message)" -Function $loggingTag
       Invoke-Expression -Command $PSItem.Name
       Start-Sleep -Milliseconds 777
     }
+  } else {
+    Write-Log '$MySettings.function_before was not found.' -Function $loggingTag
   }
 
-  if (-not ($MySettings.ServiceGroup))
-  {
-    Write-Log '$MySettings.ServiceGroup was not found.' -Function $loggingTag
-  }
-  else
-  {
+  if ($MySettings.ServiceGroup) {
     $MySettings.ServiceGroup | ForEach-Object -Process {
       Write-Log -Message ('{0}' -f $PSItem.Message) -Function $loggingTag
       Set-ServiceGroup -Name $PSItem.Name -Status $PSItem.Status
       Start-Sleep -Milliseconds 777
     }
+  } else {
+    Write-Log '$MySettings.ServiceGroup was not found.' -Function $loggingTag
   }
 
-  if (-not ($MySettings.ProcessState))
-  {
-    Write-Log '$MySettings.ProcessState was not found.' -Function $loggingTag
-  }
-  else
-  {
+  if ($MySettings.ProcessState) {
     $MySettings.ProcessState | ForEach-Object -Process {
       Write-Log -Message ('{0}' -f $PSItem.Message) -Function $loggingTag
       Set-ProcessState -Name $PSItem.Name -Action $PSItem.Action
       Start-Sleep -Milliseconds 777
     }
+  } else {
+    Write-Log '$MySettings.ProcessState was not found.' -Function $loggingTag
   }
 
   # Update IE home page
