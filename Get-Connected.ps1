@@ -43,78 +43,79 @@ function Set-NetConnStatus {
       12 = 'Credentials Required'
     }
 
-    if ($Global:onServer) {
-      if ($ListAvailable) {
+    if ($ListAvailable) {
         Write-Output -InputObject ''
         Write-Output -InputObject 'Listing available Network Connections by ID:'
         Get-WmiObject -Class Win32_NetworkAdapter -Filter "PhysicalAdapter=True" | Select-Object -Property Name,NetConnectionID | Sort-Object -Unique -Property NetConnectionID
         Write-Output -InputObject ''
       } else {
-        Write-Output -InputObject ''
-        Write-Output -InputObject ("Getting details for Network Connection '{0}'" -f $ConnectionID)
+        if (-not $Global:onServer) {
+          Write-Output -InputObject ''
+          Write-Output -InputObject ("Getting details for Network Connection '{0}'" -f $ConnectionID)
 
-        $NetAdapter     = Get-WmiObject -Class Win32_NetworkAdapter -Filter ("PhysicalAdapter=True AND NetConnectionID = '{0}'" -f ($ConnectionID))
-        $NetAdapterName = $NetAdapter.Name
-        $CurStatText    = $($NetConnectionStatus.[int]($NetAdapter.NetConnectionStatus))
+          $NetAdapter     = Get-WmiObject -Class Win32_NetworkAdapter -Filter ("PhysicalAdapter=True AND NetConnectionID = '{0}'" -f ($ConnectionID))
+          $NetAdapterName = $NetAdapter.Name
+          $CurStatText    = $($NetConnectionStatus.[int]($NetAdapter.NetConnectionStatus))
 
-        try
-        {
-          $IPAddress     = (Get-IPAddress).IPAddress
-          $IPAdapterName = (Get-IPAddress).AdapterDescription
-        }
-        catch
-        {
-          Write-Debug -Message 'Failed to retrieve an IP address (via Get-IPaddress function)'
-          $IPAddress     = $null
-          $IPAdapterName = $null
-        }
-        Write-Verbose -Message ('Network Adapter {0} is connected to IP Address is {1}' -f $IPAdapterName, $IPAddress)
-        # force enable
-        if ($Enable)
-        {
-          $AdapterState = 'Enabled'
-        }
-        # Determine end state the NetworkAdapter (as identified by $ConnectionID) should be in
-        elseif (((Get-WmiObject -Class Win32_Battery -Property BatteryStatus).BatteryStatus -eq 2))
-        {
-          if ($IPAddress)
+          try
           {
-            Write-Verbose -Message 'Computer is plugged in (charging)'
-            if ($IPAdapterName -eq $NetAdapterName)
+            $IPAddress     = (Get-IPAddress).IPAddress
+            $IPAdapterName = (Get-IPAddress).AdapterDescription
+          }
+          catch
+          {
+            Write-Debug -Message 'Failed to retrieve an IP address (via Get-IPaddress function)'
+            $IPAddress     = $null
+            $IPAdapterName = $null
+          }
+          Write-Verbose -Message ('Network Adapter {0} is connected to IP Address is {1}' -f $IPAdapterName, $IPAddress)
+          # force enable
+          if ($Enable)
+          {
+            $AdapterState = 'Enabled'
+          }
+          # Determine end state the NetworkAdapter (as identified by $ConnectionID) should be in
+          elseif (((Get-WmiObject -Class Win32_Battery -Property BatteryStatus).BatteryStatus -eq 2))
+          {
+            if ($IPAddress)
             {
-              Write-Verbose -Message 'Confirmed IP Address is associated with the specified adapter. No changes will be initiated.'
+              Write-Verbose -Message 'Computer is plugged in (charging)'
+              if ($IPAdapterName -eq $NetAdapterName)
+              {
+                Write-Verbose -Message 'Confirmed IP Address is associated with the specified adapter. No changes will be initiated.'
+              }
+              else
+              {
+                Write-Verbose -Message ('IP Address is associated with a different adapter. {0} should be Disabled.' -f $NetAdapterName)                        
+                $AdapterState = 'Disabled'
+              }
             }
             else
             {
-              Write-Verbose -Message ('IP Address is associated with a different adapter. {0} should be Disabled.' -f $NetAdapterName)                        
-              $AdapterState = 'Disabled'
+              # enable if no ip address
+              Write-Verbose -Message ('Computer is plugged in (charging), but has no IP Address. {0} should be Enabled.' -f $NetAdapterName)
+              $AdapterState = 'Enabled'
+            }                
+          }
+          else
+          {
+            Write-Verbose -Message "Computer does NOT seem to be plugged in (charging)."
+            if ($IPAddress)
+            {
+              Write-Verbose -Message ('Computer has IP Address {0}. No changes will be initiated.' -f $IPAddress)
             }
-          }
-          else
-          {
-            # enable if no ip address
-            Write-Verbose -Message ('Computer is plugged in (charging), but has no IP Address. {0} should be Enabled.' -f $NetAdapterName)
-            $AdapterState = 'Enabled'
-          }                
-        }
-        else
-        {
-          Write-Verbose -Message "Computer does NOT seem to be plugged in (charging)."
-          if ($IPAddress)
-          {
-            Write-Verbose -Message ('Computer has IP Address {0}. No changes will be initiated.' -f $IPAddress)
-          }
-          else
-          # status quo
-          {
-            Write-Verbose -Message 'Computer has no IP Address. $NetAdapterName will be Enabled.'
-            $AdapterState = 'Enabled'
+            else
+            # status quo
+            {
+              Write-Verbose -Message 'Computer has no IP Address. $NetAdapterName will be Enabled.'
+              $AdapterState = 'Enabled'
+            }
           }
         }
       }
 
       # Make it so
-      if (-not $ListAvailable)
+      if ((-not $ListAvailable) -and (-not $Global:onServer))
       {
         if (-not $NetAdapter)
         {
@@ -202,7 +203,6 @@ function Set-NetConnStatus {
           Get-WmiObject -Class Win32_NetworkAdapter -Filter ("PhysicalAdapter=True AND NetConnectionID = '{0}'" -f $ConnectionID) | Select-Object -Property @{LABEL='Adapter/Device Name'; EXPRESSION={$PSItem.Name}},@{LABEL='Network Connection Name'; EXPRESSION={$PSItem.NetConnectionID}},@{LABEL='Status'; EXPRESSION={$($NetConnectionStatus.[int]($PSItem.NetConnectionStatus))}},@{LABEL='Enabled'; EXPRESSION={$PSItem.NetEnabled}}
         }
       }
-    }
       
   Write-Output -InputObject ''
   Write-Verbose -Message ('{0}: Ending {1}' -f (Get-Date), $MyInvocation.MyCommand.Name)
@@ -289,13 +289,14 @@ function Get-NetConnStatus {
     Write-Output -InputObject ''
     Write-Verbose -Message ('{0}: Starting {1}' -f (Get-Date), $MyInvocation.MyCommand.Name)
 
-    if ($null -eq $(Get-Variable -Name ConnectionID -ErrorAction SilentlyContinue)) {
-        $ListAvailable -eq $true
+    if (-not $ConnectionID) {
+        Write-Output -InputObject 'No ConnectionID specified; enumerating physical network adapters'
+        $ListAvailable = $true
     }
 
-    if (($null -eq $ConnectionID) -or ($ListAvailable))
+    if ($ListAvailable)
     {
-        Write-Verbose -Message 'Listing available Network Connections by Name'
+        Write-Verbose -Message 'Listing available Physical Network Adapters / Connections by Name'
         Get-WmiObject -Class Win32_NetworkAdapter -Filter "PhysicalAdapter=True" | Select-Object -Property Name,NetConnectionID | Sort-Object -Unique -Property NetConnectionID
     }
     else

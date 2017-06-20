@@ -164,6 +164,11 @@
             ],
             "ServiceGroup": [
                 {
+                    "Name": "Tenable*",
+                    "Status": "Stopped",
+                    "Message": "Suspend Tenable Agent"
+                },
+                {
                     "Name": "Sophos Client Firewall*",
                     "Status": "Stopped",
                     "Message": "Suspend client firewall"
@@ -210,6 +215,11 @@
             ],
             "ServiceGroup": [
                 {
+                    "Name": "Tenable*",
+                    "Status": "Running",
+                    "Message": "Ensure Tenable Agent is enabled"
+                },
+                {
                     "Name": "Sophos Client Firewall*",
                     "Status": "Running",
                     "Message": "Ensure client firewall is enabled"
@@ -218,10 +228,6 @@
             "IEHomePage": "https://intranet2/pg_view.aspx?PageID=1294",
             "BrowserProgid": "IE.HTTPS",
             "function_after": [
-                {
-                    "Name": ". .\\Scripts\\Start-XenApp.ps1",
-                    "Message": "Start Citrix Session"
-                },
                 {
                     "Name": "Start-CitrixSession",
                     "Message": "Start Citrix Session"

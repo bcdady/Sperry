@@ -8,7 +8,7 @@
     Customizes the user's operating environment and launches specified applications, to operate in a workplace persona
     The module includes functions such as ProfileSync, CheckProcess, and utilizes the Write-Log function from the PSLogger Module.
     .NOTES
-    NAME     : Sperry.ps1
+    NAME     : Sperry.psm1
     LANGUAGE : Windows PowerShell
     AUTHOR   : Bryan Dady
     DATE     : 11/2/2015
@@ -411,35 +411,44 @@ function Set-Workplace {
   Write-Log -Message "Loading settings for Workplace $zone as defined in $SettingsFileName." -Function $loggingTag -Verbose
   $MySettings = $Global:Settings.Workplace | Where-Object -FilterScript {$PSItem.Name -eq $zone}
 
-  if ($MySettings.function_before) {
+  if (-not ($MySettings.function_before))
+  {
+    Write-Log '$MySettings.function_before was not found.' -Function $loggingTag
+  }
+  else
+  {
     $MySettings.function_before | ForEach-Object -Process {
       Write-Debug -Message "Function $($PSItem.Name) - Message: $($PSItem.Message)"
       Write-Log -Message "$($PSItem.Message)" -Function $loggingTag
       Invoke-Expression -Command $PSItem.Name
       Start-Sleep -Milliseconds 777
     }
-  } else {
-    Write-Log '$MySettings.function_before was not found.' -Function $loggingTag
   }
 
-  if ($MySettings.ServiceGroup) {
+  if (-not ($MySettings.ServiceGroup))
+  {
+    Write-Log '$MySettings.ServiceGroup was not found.' -Function $loggingTag
+  }
+  else
+  {
     $MySettings.ServiceGroup | ForEach-Object -Process {
       Write-Log -Message ('{0}' -f $PSItem.Message) -Function $loggingTag
       Set-ServiceGroup -Name $PSItem.Name -Status $PSItem.Status
       Start-Sleep -Milliseconds 777
     }
-  } else {
-    Write-Log '$MySettings.ServiceGroup was not found.' -Function $loggingTag
   }
 
-  if ($MySettings.ProcessState) {
+  if (-not ($MySettings.ProcessState))
+  {
+    Write-Log '$MySettings.ProcessState was not found.' -Function $loggingTag
+  }
+  else
+  {
     $MySettings.ProcessState | ForEach-Object -Process {
       Write-Log -Message ('{0}' -f $PSItem.Message) -Function $loggingTag
       Set-ProcessState -Name $PSItem.Name -Action $PSItem.Action
       Start-Sleep -Milliseconds 777
     }
-  } else {
-    Write-Log '$MySettings.ProcessState was not found.' -Function $loggingTag
   }
 
   # Update IE home page
@@ -475,13 +484,19 @@ Function Open-Browser
         ValueFromPipelineByPropertyName=$true,
         HelpMessage='URL to open in default web browser.'
     )]
-    [ValidatePattern({^https?:\/\/?.+\.\w{2,6}})]
+    [ValidatePattern({\S+\.\w{2,6}})]
     [String]
     [alias('address','site')]
     $URL
   )
 
   Write-Verbose -Message "Start-Process -FilePath $URL"
+  if (-not ($URL -match "^http?:\/\/?.+\.\w{2,6}}"))
+  {
+    Write-Verbose -Message 'Prepending ambiguous $URL with https://'
+    $URL = 'https://' + $URL
+  }
+
   Start-Process -FilePath $URL
 }
 
