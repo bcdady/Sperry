@@ -30,11 +30,9 @@ function Get-Printer {
         # List Default printer
         [switch]
         $Default,
-
         # Enumerate only local printers
         [switch]
         $Local,
-
         # Enumerate only network printers
         [switch]
         $Network
@@ -42,26 +40,19 @@ function Get-Printer {
     Show-Progress -msgAction Start -msgSource $PSCmdlet.MyInvocation.MyCommand.Name
     [string]$Script:CIMfilter
 
-    if ($Default)     
-    {
+    if ($Default) {
         $Script:CIMfilter = "Default='True'"
-    }
-    elseif ($Local)   
-    {
+    } elseif ($Local) {
         $Script:CIMfilter = "Local='True'"
-    } 
-    elseif ($Network) 
-    {
+    } elseif ($Network) {
         $Script:CIMfilter = "Network='True'"
     } 
-
     # else  $CIMfilter remains $null, so returns all results
 
-    $Script:printerInfo = Get-CimInstance -ClassName Win32_Printer -Filter $CIMfilter | Format-Table -Property Name, ShareName, SystemName, Default, Local, Network -AutoSize
+    $Script:printerInfo = Get-CimInstance -ClassName Win32_Printer -Filter $CIMfilter | Select-Object -Property Name, ShareName, ServerName, CapabilityDescriptions, Default, Local, Network, DriverName
 
     # If default printer was retrieved, update 
-    if ($Default) 
-    {
+    if ($Default) {
         $Global:DefaultPrinter = $printerInfo 
     }
     
@@ -69,18 +60,6 @@ function Get-Printer {
 
     return $printerInfo
 }
-
-<#
-        Example of how to retrieve color capabilities, like Color, Duplex.
-        Also shows DriverName and print server name
-        Get-WmiObject -Class win32_printer -Filter "ShareName='GBCI02_IT223'" | format-list ShareName,Capabilities,CapabilityDescriptions,DriverName,ServerName
-
-        ShareName              : GBCI02_IT223
-        Capabilities           : {4, 2, 3, 5}
-        CapabilityDescriptions : {Copies, Color, Duplex, Collate}
-        DriverName             : TP Output Gateway
-        ServerName             : \\gbci02ps02
-#>
 
 Write-Verbose -Message 'Declaring Function Set-Printer'
 function Set-Printer  {
@@ -96,8 +75,8 @@ function Set-Printer  {
 		Set's the default printer to GBCI91_IT252
 	.NOTES
 		NAME        :  Set-Printer
-		VERSION     :  1.1
-		LAST UPDATED:  3/30/2015
+		VERSION     :  1.1.1
+		LAST UPDATED:  7/6/2017
 		AUTHOR      :  Bryan Dady
 #>
     [CmdletBinding(SupportsShouldProcess)]
@@ -105,7 +84,7 @@ function Set-Printer  {
         [String]
         $printerShareName
     )
-    return (Get-WmiObject -Class win32_printer -Filter "ShareName='$printerShareName'").SetDefaultPrinter()
+    return (Get-WmiObject -Class win32_printer -Filter "ShareName='$printerShareName'").SetDefaultPrinter() | Out-Null; $?
 }
 
 #Export-ModuleMember -Function Get-Printer, Set-Printer -Variable DefaultPrinter

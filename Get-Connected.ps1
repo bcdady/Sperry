@@ -253,7 +253,7 @@ function Set-NetConnStatus {
       http://msdn.microsoft.com/en-us/library/windows/desktop/aa394074(v=vs.85).aspx
       http://technet.microsoft.com/en-us/library/dd163571
   #>
-  }
+}
 
 Write-Verbose -Message 'Declaring function Get-NetConnStatus'
 function Get-NetConnStatus {

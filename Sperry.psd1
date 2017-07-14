@@ -6,6 +6,7 @@
 #   Update 1.9.5:  1/10/2017, Improve reliability of Get-ServiceGroup, Set-ServiceGroup Set-NetConnStatus via Open-AdminConsole
 #   Update 1.9.6:  2/24/2017, Updated some function names and FunctionsToExport (via get-modulemember)
 #   Update 1.9.7:  4/5/2017,  Added Open-Browser function, to be used in function_after calls from within sperry.json
+#   Update 1.9.8:  6/20/2017, Removed Start-XenApp and Show-MsgBox scripts. Convert this manifest to UTF8 encoding. Add PrivateData values
 #
 
 @{
@@ -14,7 +15,7 @@
 RootModule = 'Sperry.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.9.7'
+ModuleVersion = '1.9.8'
 
 # ID used to uniquely identify this module
 GUID = 'bf8bf3a6-11b1-48b7-8a6d-d4cbd812b906'
@@ -65,11 +66,11 @@ ScriptsToProcess = @('ProcessState.ps1', 'ClearCookies.ps1', 'Get-ProcessByUser.
 # FormatsToProcess = @()
 
 # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
-NestedModules = @('StartXenApp.psm1','PrinterFunctions.psm1') #@('ProcessState.ps1', 'ClearCookies.ps1', 'PrinterFunctions.psm1', 'Get-ServiceGroup.ps1', 'StartXenApp.psm1', 'Get-Connected.ps1')
+NestedModules = @('PrinterFunctions.psm1')
 
 # Functions to export from this module
 FunctionsToExport = @('Clear-IECookie', 'Connect-WiFi', 'Disconnect-WiFi', 'Dismount-Path', 'Get-IECookie', 'Get-IPAddress','Get-NetConnStatus', 'Get-Printer', 'Get-ProcessByUser', 'Get-PSFSDrive', 'Get-ServiceGroup', 'Get-WiFi',
-                    'global:Test-LocalAdmin', 'Import-Settings', 'Mount-Path', 'Open-Browser', 'Redo-DHCP', 'Set-NetConnStatus', 'Set-Printer', 'Set-ProcessState', 'Set-ServiceGroup', 'Set-UAC', 'Set-Workplace', 'Show-DesktopDocuments', 'Show-MsgBox', 'Show-Settings', 'Test-ProcessState')
+                    'global:Test-LocalAdmin', 'Import-Settings', 'Mount-Path', 'Open-Browser', 'Redo-DHCP', 'Set-NetConnStatus', 'Set-Printer', 'Set-ProcessState', 'Set-ServiceGroup', 'Set-UAC', 'Set-Workplace', 'Show-DesktopDocuments', 'Show-Settings', 'Test-ProcessState')
 
 # Cmdlets to export from this module
 # CmdletsToExport = '*'
@@ -78,13 +79,37 @@ FunctionsToExport = @('Clear-IECookie', 'Connect-WiFi', 'Disconnect-WiFi', 'Dism
 VariablesToExport = 'DefaultPrinter'
 
 # List of all modules packaged with this module
-ModuleList = @('PrinterFunctions.psm1', 'StartXenApp.psm1')
+ModuleList = @('PrinterFunctions.psm1') # , 'StartXenApp.psm1'
 
 # List of all files packaged with this module
-FileList = @('ProcessState.ps1', 'ClearCookies.ps1', 'PrinterFunctions.psm1', 'sperry.json', 'ShowMsgBox.ps1', 'Get-ServiceGroup.ps1', 'Get-Connected.ps1')
+FileList = @('ProcessState.ps1', 'ClearCookies.ps1', 'PrinterFunctions.psm1', 'sperry.json', 'Get-ServiceGroup.ps1', 'Get-Connected.ps1')
 
-# Private data to pass to the module specified in RootModule/ModuleToProcess
-# PrivateData = ''
+# Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
+PrivateData = @{
+
+    PSData = @{
+
+        # Tags applied to this module. These help with module discovery in online galleries.
+         Tags = @('PSModule', 'Sperry', 'Autopilot', 'Set-Workplace', 'Get-WiFi')
+
+        # A URL to the license for this module.
+        # LicenseUri = ''
+
+        # A URL to the main website for this project.
+        ProjectUri = 'https://github.com/bcdady/Sperry/'
+
+        # A URL to an icon representing this module.
+        # IconUri = ''
+
+        # ReleaseNotes of this module
+        ReleaseNotes = 'Update 1.9.8:  6/20/2017, Removed Start-XenApp and Show-MsgBox scripts. Convert this manifest to UTF8 encoding. Add PrivateData values.'
+
+        # External dependent modules of this module
+        ExternalModuleDependencies = 'PSLogger'
+
+    } # End of PSData hashtable
+
+} # End of PrivateData hashtable
 
 # HelpInfo URI of this module
 # HelpInfoURI = ''
