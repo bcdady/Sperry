@@ -13,17 +13,18 @@ New-Variable -Name DefaultPrinter -Description 'Default Printer' -Scope Global -
 
 Write-Verbose -Message 'Declaring function Get-Printer'
 function Get-Printer {
-<#
-	.Synopsis
-	   Get-Printer retrieves details of printer ports
-	.DESCRIPTION
-	   Can enumerate default printer, local printers, and network printers
-	.EXAMPLE
-	   Get-Printer -Default
-
-	.EXAMPLE
-	   Get-Printer -Default
-#>
+  <#
+    .Synopsis
+      Get-Printer retrieves details of printer ports
+    .DESCRIPTION
+      Can enumerate default printer, local printers, and network printers
+    .EXAMPLE
+      Get-Printer -Default
+    .EXAMPLE
+      Get-Printer -Network
+    .EXAMPLE
+      Get-Printer -Local
+  #>
     [CmdletBinding()]
     [OutputType([int])]
     Param (
@@ -38,7 +39,7 @@ function Get-Printer {
         $Network
     )
     Show-Progress -msgAction Start -msgSource $PSCmdlet.MyInvocation.MyCommand.Name
-    [string]$Script:CIMfilter
+    [string]$Script:CIMfilter = ''
 
     if ($Default) {
         $Script:CIMfilter = "Default='True'"
@@ -48,43 +49,71 @@ function Get-Printer {
         $Script:CIMfilter = "Network='True'"
     } 
     # else  $CIMfilter remains $null, so returns all results
+    if ($CIMfilter) {
+        # Query CIM with -Filter
+        $Script:printerInfo = Get-CimInstance -ClassName Win32_Printer -Filter $CIMfilter | Select-Object -Property Name, ShareName, ServerName, CapabilityDescriptions, Default, Local, Network, DriverName
+    } else {
+        # Query CIM withOUT -Filter
+        $Script:printerInfo = Get-CimInstance -ClassName Win32_Printer | Select-Object -Property Name, ShareName, ServerName, CapabilityDescriptions, Default, Local, Network, DriverName
+    }
 
-    $Script:printerInfo = Get-CimInstance -ClassName Win32_Printer -Filter $CIMfilter | Select-Object -Property Name, ShareName, ServerName, CapabilityDescriptions, Default, Local, Network, DriverName
-
-    # If default printer was retrieved, update 
+    # If default parameter was specified, update default printer
     if ($Default) {
-        $Global:DefaultPrinter = $printerInfo 
+        $Global:DefaultPrinter = $Script:printerInfo
     }
     
     Show-Progress -msgAction Stop -msgSource $PSCmdlet.MyInvocation.MyCommand.Name
 
-    return $printerInfo
+    return $Script:printerInfo
 }
 
 Write-Verbose -Message 'Declaring Function Set-Printer'
-function Set-Printer  {
-<#
-	.SYNOPSIS
-		Set your own default printer by specifying it's ShareName
-	.DESCRIPTION
-		Set-Printer uses WMI to set the Default printer, specified by it's short, simple ShareName property. To list all available printers by ShareName, see the Get-NetworkPrinters or Get-LocalPrinters cmdlets.
-	.PARAMETER printerShareName
-		Specify the desired printers ShareName property
-	.EXAMPLE
-		PS C:\>  Set-Printer GBCI91_IT252
-		Set's the default printer to GBCI91_IT252
-	.NOTES
-		NAME        :  Set-Printer
-		VERSION     :  1.1.1
-		LAST UPDATED:  7/6/2017
-		AUTHOR      :  Bryan Dady
-#>
-    [CmdletBinding(SupportsShouldProcess)]
+function Set-Printer {
+    <#
+        .SYNOPSIS
+            Set your own default printer by specifying it's ShareName
+        .DESCRIPTION
+            Set-Printer uses WMI to set the Default printer, specified by it's short, simple ShareName property. To list all available printers by ShareName, see the Get-NetworkPrinters or Get-LocalPrinters cmdlets.
+        .PARAMETER printerShareName
+            Specify the desired printers ShareName property
+        .EXAMPLE
+            PS C:\>  Set-Printer GBCI91_IT252
+            Set's the default printer to GBCI91_IT252
+        .NOTES
+            NAME        :  Set-Printer
+            VERSION     :  1.1.1
+            LAST UPDATED:  7/6/2017
+            AUTHOR      :  Bryan Dady
+    #>
+    [CmdletBinding()]
     param (
         [String]
-        $printerShareName
+        [Alias('PrinterShareName','PrinterName')]
+        $Name = ((Get-Printer | Select-Object -First 1 -Property Name).Name)
     )
-    return (Get-WmiObject -Class win32_printer -Filter "ShareName='$printerShareName'").SetDefaultPrinter() | Out-Null; $?
-}
+    Write-Verbose "Preparing to set printer '$Name' as Default"
 
-#Export-ModuleMember -Function Get-Printer, Set-Printer -Variable DefaultPrinter
+    # Try to Get-Printer
+    $PrinterObject = (Get-Printer | Where-Object -FilterScript {$PSItem.Name -like $Name})
+
+    if ($PrinterObject.ShareName) {
+        # Specify .SetDefaultPrinter against ShareName
+        $WMIFilter = "ShareName='$Name'"
+    } else {
+        # Specify .SetDefaultPrinter against Printer 'Name'
+        $WMIFilter = "Name='$Name'"
+    }
+    
+    # Use WMI to Set Default Printer // This must be WMI, as an otherwise matching CimInstance does not provide the .SetDefaultPrinter() method
+    Write-Debug -Message "`$PrinterWMIObject = Get-WmiObject -Class win32_printer -Filter $WMIFilter"
+    $PrinterWMIObject = Get-WmiObject -Class win32_printer -Filter $WMIFilter
+    # return (Get-WmiObject -Class win32_printer -Filter "ShareName='$printerShareName'").SetDefaultPrinter() | Out-Null; $?
+
+    try {
+        return $PrinterWMIObject.SetDefaultPrinter() | Out-Null; $?
+    }
+    catch {
+        Write-Warning -Message "Failed to get details of an available printer matching this filter: $WMIFilter"
+        return $null
+    }
+}
