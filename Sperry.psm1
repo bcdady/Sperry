@@ -22,6 +22,9 @@ param ()
 
 # Define PSUpdateDate variable and populate from persistent state settings file
 New-Variable -Name PSHelpUpdatedDate -Description 'Date/time stamp of the last Update-Help run' -Scope Global -Force
+
+Set-Variable -Name Settings -Description "Sperry Settings" -Scope Global
+
 Write-Output -InputObject 'Importing shared saved state info from Microsoft.PowerShell_state.json to custom object: $PSState'
 try {
     $Global:PSState = (Get-Content -Path $env:PUBLIC\Documents\WindowsPowerShell\Microsoft.PowerShell_state.json -ErrorAction Ignore) -join "`n" | ConvertFrom-Json
@@ -40,26 +43,42 @@ if ((Get-WmiObject -Class Win32_OperatingSystem -Property Caption).Caption -like
 #========================================
 # FYI this same function is also globally defined in ProfilePal module
 Function global:Test-LocalAdmin {
-  Return ([security.principal.windowsprincipal] [security.principal.windowsidentity]::GetCurrent()).isinrole([Security.Principal.WindowsBuiltInRole] 'Administrator')
+    <#
+        .SYNOPSIS
+            Test if the current user of the current host (e.g. Console) have Admin permissions; returns simple boolean result
+        .DESCRIPTION
+            Updated to take advantage of the automatic variable $IsAdmin added in v4.0
+    #>
+    if ((Get-Variable -Name IsAdmin -ErrorAction Ignore) -eq $true) {
+    Return $IsAdmin
+  } else {
+    Return ([security.principal.windowsprincipal] [security.principal.windowsidentity]::GetCurrent()).isinrole([Security.Principal.WindowsBuiltInRole] 'Administrator')
+  }
 } # end function Test-LocalAdmin
 
 Function Import-Settings {
-  [CmdletBinding(SupportsShouldProcess)]
-  param ()
+    [CmdletBinding()]
+    param(
+        [Parameter(Position = 0)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $SettingsFileName = 'Sperry.json'
+    )
   
-  $Script:SettingsFileName = 'Sperry.json'
-  # Enhancement : support -Force parameter
-  if (Get-Variable -Name Settings -Scope Global -ErrorAction Ignore) {
-    Remove-Variable -Name Settings -Scope Global
-  }
-  
-  Write-Debug -Message "`$Global:Settings = (Get-Content -Path $(join-path -Path $(Split-Path -Path $((Get-PSCallStack).ScriptName | Sort-Object -Unique) -Parent) -ChildPath $Script:SettingsFileName)) -join ""``n"" | ConvertFrom-Json"
-  try {
-    $Global:Settings = (Get-Content -Path $(join-path -Path $(Split-Path -Path $PSCommandPath -Parent) -ChildPath $Script:SettingsFileName)) -join "`n" | ConvertFrom-Json
+
+    # Enhancement : support -Force parameter
+    if (Get-Variable -Name Settings -Scope Global -ErrorAction Ignore) {
+        Remove-Variable -Name Settings -Scope Global
+    }
+    Write-Debug -Message "`$JSONPath = join-path -Path `$(Split-Path -Path $PSCommandPath -Parent) -ChildPath $Script:SettingsFileName"
+    $JSONPath = join-path -Path $(Split-Path -Path $PSCommandPath -Parent) -ChildPath $SettingsFileName
+    Write-Debug -Message "`$Global:Settings = (Get-Content -Path $JSONPath) -join ""``n"" | ConvertFrom-Json"
+    $Global:Settings = (Get-Content -Path $JSONPath) -join "`n" | ConvertFrom-Json
+
+    if (Get-Variable -Name Settings -Scope Global -ValueOnly -ErrorAction Ignore) {
     Write-Verbose -Message 'Settings imported. Run Show-Settings to see details.' 
-  }
-  catch {
-    write-warning -Message 'Critical Error loading settings from from sperry.json'
+    } else {
+        write-warning -Message "Critical Error loading settings from $JSONPath"
   }
 } # end function Import-Settings
 
@@ -150,8 +169,7 @@ function Get-PSFSDrive {
 # Define Dismount-Path function
 function Dismount-Path {
   [CmdletBinding(SupportsShouldProcess)]
-  param (
-  )
+  param ()
   Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name # Log start time stamp
   Write-Log -Message 'Removing mapped network drives' -Function $MyInvocation.MyCommand.Name
   Get-PSDrive -PSProvider FileSystem | ForEach-Object {
@@ -226,6 +244,11 @@ function Connect-WiFi {
   )
 
   Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name # Log start time stamp
+
+  # Check and conditionally open UAC window, before invoking repeated elevated commands
+  Write-Log -Message 'Checking UserAccountControl level' -Function $loggingTag
+  Open-UAC
+  
   Set-ServiceGroup -Name 'Sophos Client Firewall*' -Status Stopped
 
     Write-Log -Message ("Connecting {0} to {1}" -f $ConnectionID, $SSID) -Function $MyInvocation.MyCommand.Name
@@ -358,12 +381,18 @@ function Redo-DHCP {
   return Get-IPAddress
 } # end function Redo-DHCP
 
-function Set-UAC {
+function Open-UAC {
   Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name # Log start time stamp
   # Check current UAC level via registry
   # We want ConsentPromptBehaviorAdmin = 5
   # thanks to http://forum.sysinternals.com/display-uac-status_topic18490_page3.html
-  if (((Get-ItemProperty -path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -name 'ConsentPromptBehaviorAdmin').ConsentPromptBehaviorAdmin) -ne 5) { # prompt for UAC update
+    $ConsentPromptBehaviorAdmin = (Get-ItemProperty -path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -name 'ConsentPromptBehaviorAdmin').ConsentPromptBehaviorAdmin
+    if ($ConsentPromptBehaviorAdmin -eq 5) {
+        # prompt for UAC update
+        Write-Verbose -Message "User Account Control set to an approved level: $ConsentPromptBehaviorAdmin"
+    } elseif ($ConsentPromptBehaviorAdmin -eq 0) {
+        Write-Verbose -Message "User Account Control set to an approved level: $ConsentPromptBehaviorAdmin"
+    } else {
     Write-Log -Message 'Opening User Account Control Settings dialog ...' -Function $MyInvocation.MyCommand.Name
     & $env:SystemDrive\Windows\System32\UserAccountControlSettings.exe
   }
@@ -373,10 +402,9 @@ function Set-UAC {
   Test-ProcessState -ProcessName 'UserAccountControlSettings' -Wait
 
   Show-Progress -msgAction 'Stop' -msgSource $MyInvocation.MyCommand.Name # Log end time stamp
-} # end function Set-UAC
+} # end function Open-UAC
 
-Function Open-Browser
-{
+Function Open-Browser {
   [CmdletBinding()]
   param (
     [Parameter(
@@ -400,8 +428,7 @@ Function Open-Browser
   Start-Process -FilePath $URL
 } # end function Open-Browser
 
-Function Show-DesktopDocuments
-{
+Function Show-DesktopDocuments {
   Write-Log -Message 'Opening all Desktop Documents' -Function $MyInvocation.MyCommand.Name
   # Open all desktop PDF files
   Get-ChildItem -Path $env:USERPROFILE\Desktop\*.pdf | ForEach-Object { & $_ ; Start-Sleep -Milliseconds 400}
@@ -428,7 +455,7 @@ function Set-Workplace {
 
   # Always simplify UAC prompt level, so we run this before {switching ($zone)}
   Write-Log -Message 'Checking UserAccountControl level' -Function $loggingTag
-  Set-UAC
+  Open-UAC
 
   Write-Log -Message "Loading settings for Workplace $zone as defined in $SettingsFileName." -Function $loggingTag -Verbose
   $MySettings = $Global:Settings.Workplace | Where-Object -FilterScript {$PSItem.Name -eq $zone}

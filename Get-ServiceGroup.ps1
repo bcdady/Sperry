@@ -9,10 +9,9 @@ param ()
 Set-StrictMode -Version latest
 
 Write-Verbose -Message "Declaring function Get-ServiceGroup"
-function Get-ServiceGroup 
-{
+function Get-ServiceGroup {
     [cmdletbinding(SupportsShouldProcess)]
-  <#
+    <#
       .SYNOPSIS
         Get-ServiceGroup function belongs to the Sperry 'autopilot' module, which includes functions to automate getting into and out of work mode.
       .DESCRIPTION
@@ -46,8 +45,8 @@ function Get-ServiceGroup
         None
       .OUTPUTS
         Write-Log
-  #>    # Calculates the cumulative status of all services matching the Name parameter
-
+    #>
+    # Calculates the cumulative status of all services matching the Name parameter
     Param(
         [Parameter(
             Mandatory,
@@ -57,11 +56,8 @@ function Get-ServiceGroup
         [String]
         [alias('Name')]
         [ValidateNotNullOrEmpty()]
-        $ServiceName
-        ,
-        [Parameter(
-            Position = 1
-        )]
+        $ServiceName,
+        [Parameter(Position = 1)]
         [String]
         [alias('ServiceStatus','State')]
         [ValidateSet('Running', 'Stopped')]
@@ -88,12 +84,9 @@ function Get-ServiceGroup
 #    Write-Verbose -Message ('Service Count matching Status: {0}' -f $ServiceCount)
 
     # if the count of actual running doesn't match the all services count, then our answer is false
-    if ($StatusCount -eq $ServiceCount) 
-    {
+    if ($StatusCount -eq $ServiceCount) {
         $StatusMatch = $true
-    }
-    else 
-    {
+    } else {
         $StatusMatch = $false
     }
     Write-Debug -Message "Get-ServiceGroup $Status = $StatusMatch"
@@ -137,8 +130,7 @@ function Get-ServiceGroup
 }
 
 Write-Verbose -Message "Declaring function Set-ServiceGroup"
-function Set-ServiceGroup 
-{
+function Set-ServiceGroup {
   [cmdletbinding(SupportsShouldProcess)]
   <#
       .SYNOPSIS
@@ -185,11 +177,8 @@ function Set-ServiceGroup
         [String]
         [alias('Name')]
         [ValidateNotNullOrEmpty()]
-        $ServiceName
-        ,
-        [Parameter(
-            Position = 1
-        )]
+        $ServiceName,
+        [Parameter(Position = 1)]
         [String]
         [alias('ServiceStatus','State')]
         [ValidateSet('Running', 'Stopped')]
@@ -203,43 +192,37 @@ function Set-ServiceGroup
     # Log start time-stamp
     $StatusMatch = $((Get-ServiceGroup -ServiceName $ServiceName -Status $Status | Select-Object -Property Name, StatusMatch).StatusMatch)
 
-    if ($StatusMatch) 
-    {
+    if ($StatusMatch) {
         Write-Log -Message "$ServiceName services confirmed $Status" -Function ServiceGroup
-    }
-    else 
-    {
+    } else {
         Write-Log -Message "$ServiceName services were NOT confirmed $Status" -Function ServiceGroup
         # Need to change status of all services in the group 
-        if (Test-LocalAdmin) 
-        {
+        if (Test-LocalAdmin) {
           # We have elevated permissions; proceed with controlling services
           switch ($Status) {
-            'Running' 
-            {
+            'Running' {
               Write-Log -Message 'Confirmed elevated privileges; Starting $ServiceName services' -Function ServiceGroup
               Start-Service -Name $ServiceName -PassThru | Format-Table -AutoSize -Property Name,Status
               Start-Sleep -Seconds 1
             }
-            'Stopped' 
-            {
+            'Stopped' {
               Write-Log -Message 'Confirmed elevated privileges; Stopping $ServiceName services' -Function ServiceGroup
               Stop-Service -Name $ServiceName -PassThru | Format-Table -AutoSize -Property Name,Status
               Start-Sleep -Seconds 1
             }
           }        
-        }
-        else 
-        {
-          # Before we attempt to elevate permissions, check current services state 
-          Write-Debug -Message "StatusMatch: $StatusMatch"
+        } else {
+            # Before we attempt to elevate permissions, check current services state 
+            Write-Debug -Message "StatusMatch: $StatusMatch"
 
-          Write-Log -Message 'Need elevated privileges to proceed ... attempting Start-Service using admin privileges.' -Function ServiceGroup -Verbose
-          Set-UAC
-          Start-Sleep -Milliseconds 200
-          $CommandString = "Set-ServiceGroup -ServiceName {0} -Status {1} -Verbose" -f "'$ServiceName'",$Status
-          Write-Debug -Message "Open-AdminConsole -Command $CommandString"
-          Open-AdminConsole -Command $CommandString -Verbose
+            Write-Log -Message 'Need elevated privileges to proceed ... attempting Start-Service using admin privileges.' -Function ServiceGroup -Verbose
+            # Check and conditionally open UAC window, before invoking repeated elevated commands
+            Write-Log -Message 'Checking UserAccountControl level' -Function $loggingTag
+            Update-UAC
+
+            $CommandString = "Set-ServiceGroup -ServiceName {0} -Status {1} -Verbose" -f "'$ServiceName'",$Status
+            Write-Debug -Message "Open-AdminConsole -Command $CommandString"
+            Open-AdminConsole -Command $CommandString -Verbose
         }
 
         # Get ServiceGroup and show output

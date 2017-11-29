@@ -49,24 +49,18 @@ function Get-ProcessByUser {
 
     Write-Debug -Message "Getting $ProcessName Processes from Computer $ComputerName and user $UserName"
     # Check if $ComputerName parameter/variable is a well known alias 
-    if ($ComputerName -ne '.' -and $ComputerName -ne 'localhost')
-    {
+    if ($ComputerName -ne '.' -and $ComputerName -ne 'localhost') {
         # Check if node named in $ComputerName parameter/variable is available via network
-        if (Test-Connection -ComputerName $ComputerName -Quiet)
-        {
+        if (Test-Connection -ComputerName $ComputerName -Quiet) {
             Write-Debug -Message "`$Processes = Get-WMIObject -ComputerName $ComputerName -Class Win32_Process -Filter ""ProcessID > 10 AND Name LIKE '$filterProcessName'"""
             $script:Processes = Get-WMIObject -ComputerName $ComputerName Win32_Process -Filter "ProcessID > 10 AND Name LIKE '$filterProcessName'"
             Write-Debug -Message "`$Processes2 = Invoke-Command -ComputerName $ComputerName -ScriptBlock {Get-Process -Name $ProcessName}"
             $script:Processes2 = Invoke-Command -ComputerName $ComputerName -ScriptBlock {Get-Process}
-        }
-        else
-        {
+        } else {
             Write-Error -Message "Failed to confirm network availability of remote computer: $ComputerName"
             break;
         }
-    }
-    else
-    {
+    } else {
         # Help cmdlets behave well / as expected by not specifying -ComputerName 
         Write-Debug -Message "`$Processes = Get-WMIObject -Class Win32_Process -Filter ""ProcessID > 10 AND Name LIKE '$filterProcessName'"""
         $script:Processes = @(Get-WMIObject Win32_Process -Filter "ProcessID > 10 AND Name LIKE '$filterProcessName'")
@@ -81,8 +75,8 @@ function Get-ProcessByUser {
     $script:ProgressCounter = 0
 
     try {
-#        Get-Variable -Scope Script -Name Processes -ErrorAction Ignore
-#        $Processes | Select-Object -Property Name -ErrorAction Ignore
+       # Get-Variable -Scope Script -Name Processes -ErrorAction Ignore
+       # $Processes | Select-Object -Property Name -ErrorAction Ignore
         Write-Debug -Message "`$Processes: $($Processes.Name | Select-Object -First 10) ..."
     }
     catch [System.Exception] {
@@ -90,8 +84,7 @@ function Get-ProcessByUser {
         Write-Debug -Message 'NO Matching Processes retrieved'
     }
 
-    ForEach ($Process in $Processes)
-    {
+    ForEach ($Process in $Processes) {
         Write-Debug -Message "Write-Progress -Activity 'Get-ProcessInfo' -PercentComplete ($ProgressCounter/$($Processes.Count)) :: $($ProgressCounter/$($Processes.Count)) -CurrentOperation $($Process.Name)"
         Write-Progress -Activity 'Get-ProcessInfo' -PercentComplete $([int]($ProgressCounter/($Processes.Count))*100) -CurrentOperation $Process.Name
         $ProgressCounter++
@@ -99,28 +92,24 @@ function Get-ProcessByUser {
         Write-Debug -Message "Get `$ProcessOwner for $($Process.Name)"
         $ErrorActionPreference = 'SilentlyContinue'
         $script:ProcessOwner = $Process.getowner().User
-        if ($null -eq $ProcessOwner)
-        {
+        if ($null -eq $ProcessOwner) {
             $script:ProcessOwner = 'Unknown'    
         }
         $ErrorActionPreference = 'Stop'
          
-        if ($ProcessOwner -like "*$UserName*")
-        {
+        if ($ProcessOwner -like "*$UserName*") {
             $AppendApp = $false
             # Check if $Process.Name exists in $RetCollection, and if so, append this ProcessID, instead of adding redundant object instance
             # "if ($($Process.Name) -in $($Script:RetCollection.Name)"
             try {
-                if ($Process.Name -in $Script:RetCollection.Name)
-                {
+                if ($Process.Name -in $Script:RetCollection.Name) {
                     $AppendApp = $true
                 }    
             }
             catch {
                 Write-Verbose -Message "There was an unexpected exception comparing the current process name with the process collection"
             }
-            if ($AppendApp)
-            {
+            if ($AppendApp) {
                 Write-Debug -Message "Adding new PID to existing Process object: $($Process.Name) :: $($Process.ProcessID)"
                 
                 # Get the object to be updated from  RetCollection
@@ -130,13 +119,14 @@ function Get-ProcessByUser {
                 Write-Debug -Message "`$script:OldCollection = `$script:RetCollection"
                 $script:OldCollection = $script:RetCollection | where {$PSItem.Name -ne $Process.Name}
                 Write-Debug -Message "This process object's previous ProcessID property is: $($procObject.ProcessID)"
-#                $script:newProcessID = @()
-#                $script:newProcessID = @($procObject.ProcessID,$Process.ProcessID)
+                # $script:newProcessID = @()
+                # $script:newProcessID = @($procObject.ProcessID,$Process.ProcessID)
                 Write-Debug -Message "This process object's new ProcessID property will be: $($procObject.ProcessID),$($Process.ProcessID)"
                 #$procObject.ProcessID = $updateObject.ProcessID
                 # Update custom object with these properties
                 $script:properties = [ordered]@{
                     'Name'        = $procObject.Name
+                    'Path'        = $procObject.Path
                     'ProcessID'   = "$($procObject.ProcessID),$($Process.ProcessID)" 
                     'Owner'       = $procObject.Owner
                     'Description' = $procObject.Description
@@ -154,12 +144,11 @@ function Get-ProcessByUser {
                 $script:RetCollection += $script:RetObject
                 # Replace the current object instance to the collection object
                 Remove-Variable -Name OldCollection -Scope Script -Force -ErrorAction Ignore
-            }
-            else
-            {
+            } else {
                 #'Optimize New-Object invocation, based on Don Jones' recommendation: https://technet.microsoft.com/en-us/magazine/hh750381.aspx
                 $script:properties = [ordered]@{
                     'Name'        = $Process.Name
+                    'Path'        = $Process.Path
                     'ProcessID'   = $Process.ProcessID
                     'Owner'       = $Process.getowner().User
                     'Description' = ($Processes2 | ? { $_.ID -eq $Process.ProcessID }).Description
@@ -176,9 +165,7 @@ function Get-ProcessByUser {
             $ErrorActionPreference = 'Stop' 
             # Empty the variable of any current object prior to moving on
             Remove-Variable -Name RetObject -Scope Script -Force -ErrorAction Ignore
-        }
-        else
-        {
+        } else {
             Write-Debug -Message "Process $($Process.Name) belongs to $ProcessOwner"
         }
     }

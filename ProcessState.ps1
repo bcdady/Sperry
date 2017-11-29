@@ -41,8 +41,7 @@ $loggingPreference = 'Continue'
 # Functions
 # =======================================
 # checkProcess([Process Name], [Start|Stop])
-function Set-ProcessState
-{
+function Set-ProcessState {
 [cmdletbinding(SupportsShouldProcess)]
 <#
     .SYNOPSIS
@@ -88,7 +87,7 @@ function Set-ProcessState
         $ListAvailable
     )
 
-#    begin {
+    # begin {
     # =======================================
     # Start with empty process arguments / parameters
     $script:CPargs   = ''
@@ -120,18 +119,14 @@ function Set-ProcessState
     } else {
         $script:process = Get-Process -Name $ProcessName -ErrorAction:SilentlyContinue
     }
-#    }
 
 #    process {  
 
     switch ($Action) {
-        'Start'
-        {
-            if (!($?))
-            {
+        'Start' {
+            if (!($?)) {
                 # unsuccessful getting $process aka NOT running
-                if ($knownPaths.Keys -contains $ProcessName)
-                {
+                if ($knownPaths.Keys -contains $ProcessName) {
                     # specify unique launch/start parameters
                     switch ($ProcessName) {
                         'receiver' {
@@ -157,14 +152,11 @@ function Set-ProcessState
 
                     if ($PSCmdlet.ShouldProcess($ProcessName)) {
                         # launch process from known path, with specified argument(s)
-                        if (($script:CPargs | Measure-Object -Character).Characters -gt 1)
-                        {
+                        if (($script:CPargs | Measure-Object -Character).Characters -gt 1) {
                             Write-Log -Message "Starting $ProcessName $($knownPaths[$ProcessName]) -ArgumentList $script:CPargs" -Function ProcessState
                             Write-Verbose -Message "Starting $ProcessName $($knownPaths[$ProcessName]) -ArgumentList $script:CPargs"
                             Start-Process -FilePath $($knownPaths[$($ProcessName)]) -ArgumentList $script:CPargs
-                        }
-                        else
-                        {
+                        } else {
                             Write-Log -Message "Starting $ProcessName $($knownPaths[$ProcessName])" -Function ProcessState
                             Write-Verbose -Message "Starting $ProcessName $($knownPaths[$ProcessName])"
                             Start-Process -FilePath $($knownPaths[$($ProcessName)]) 
@@ -177,20 +169,15 @@ function Set-ProcessState
                 }
             } # end if (!($?))
         } # end 'Start'
-        'Stop'
-        {
-            if ($?)
-            {
+        'Stop' {
+            if ($?) {
                 # $process is running
-                if ($askTerminate -contains $ProcessName)
-                {
+                if ($askTerminate -contains $ProcessName) {
                     # processName is running, prompt to close
                     Write-Log -Message "$ProcessName is running."
                     $script:confirm = Read-Host -Prompt "`n # ACTION REQUIRED # `nClose $ProcessName, then type ok and click [Enter] to proceed.`n"
-                    while ( -not ($script:interrupt ))
-                    {
-                        if($script:confirm -ilike 'ok')
-                        {
+                    while ( -not ($script:interrupt )) {
+                        if($script:confirm -ilike 'ok') {
                             $script:interrupt = $true
                         } else {
                             Write-Log -Message "Invalid response '$script:confirm'" -Function ProcessState  -Verbose
@@ -201,18 +188,14 @@ function Set-ProcessState
                     # wait one second to allow time for $process to stop
                     # Check if the process was stopped after we asked
                     $script:process = Get-Process -Name $ProcessName -ErrorAction:SilentlyContinue
-                    while ($script:process)
-                    {
+                    while ($script:process) {
                         # Application/process is still running, prompt to terminate
                         Write-Log -Message "$ProcessName is still running." -Function ProcessState  -Verbose
                         $response = Read-Host -Prompt "Would you like to force terminate? `n[Y] Yes  [N] No  (default is 'null'):"
-                        if($response -ilike 'Y')
-                        {
+                        if($response -ilike 'Y') {
                             # Special handling for Citrix PNAgent
-                            if (($ProcessName -eq 'receiver') -or ($ProcessName -eq 'pnamain'))
-                            {
-                                if ($PSCmdlet.ShouldProcess($ProcessName))
-                                {
+                            if (($ProcessName -eq 'receiver') -or ($ProcessName -eq 'pnamain')) {
+                                if ($PSCmdlet.ShouldProcess($ProcessName)) {
                                     # If we try to stop Citrix Receiver; we first try to terminate these related processes / services in a graceful order
                                     Write-Log -Message 'Stopping Citrix Receiver (and related processes, services)' -Function ProcessState  -Verbose
                                     Start-Process -FilePath $knownPaths.pnagent -ArgumentList '/terminatewait' -RedirectStandardOutput .\pnagent-termwait.log -RedirectStandardError .\pnagent-twerr.log
@@ -227,27 +210,20 @@ function Set-ProcessState
                                     Set-ProcessState -ProcessName wfica32 -Action Stop
                                     #Set-ProcessState pnamain Stop; # Citrix
                                     Set-ProcessState -ProcessName receiver -Action Stop
-                                }
-                                else
-                                {
+                                } else {
                                     Write-Output -InputObject 'What if: Stopping Citrix Receiver and related processes, services).'
                                 }
                             }
                             # if no Citrix Special handling is needed, then we stop the process
                             $script:process | ForEach-Object -Process {
                                 Write-Log -Message "Stop-Process $($PSItem.ProcessName) (ID $($script:process.id))" -Function ProcessState
-                                if ($PSCmdlet.ShouldProcess($ProcessName))
-                                {
+                                if ($PSCmdlet.ShouldProcess($ProcessName)) {
                                     Stop-Process -Id $script:process.id
-                                }
-                                else
-                                {
+                                } else {
                                     Write-Output -InputObject "What if: Performing the operation ""Stop-Process"" on target ""Name: $ProcessName, Id: $($process.id)""."
                                 }
                             }
-                        }
-                        elseif($response -ilike 'N')
-                        {
+                        } elseif($response -ilike 'N') {
                             # manually override termination
                             break
                         } else {
@@ -260,12 +236,9 @@ function Set-ProcessState
                     # kill the process
                     $script:process | ForEach-Object -Process {
                         Write-Log -Message "Stop-Process $($PSItem.ProcessName) (ID $($process.id))" -Function ProcessState
-                        if ($PSCmdlet.ShouldProcess($ProcessName))
-                        {
+                        if ($PSCmdlet.ShouldProcess($ProcessName)) {
                             Stop-Process -Id $process.id
-                        }
-                        else
-                        {
+                        } else {
                             Write-Output -InputObject "What if: Performing the operation ""Stop-Process"" on target ""Name: $ProcessName, Id: $($process.id)""."
                         }
                     }
@@ -275,8 +248,7 @@ function Set-ProcessState
     }
 }
 
-function Test-ProcessState
-{
+function Test-ProcessState {
   <#
       .SYNOPSIS
         A wrapper/helper function for get-process cmdlet interaction.
@@ -348,14 +320,11 @@ function Test-ProcessState
         $WaitTime = 50
     )
 
-    if ($PSBoundParameters.ContainsKey('ListAvailable'))
-    {
+    if ($PSBoundParameters.ContainsKey('ListAvailable')) {
         Write-Log -Message "`nEvaluating predefined process paths" -Function ProcessState -Verbose
-        foreach ($app in $knownPaths.Keys)
-        {
+        foreach ($app in $knownPaths.Keys) {
             Write-Log -Message "$app = $($knownPaths.$app)" -Function ProcessState
-            if (Test-Path -Path $knownPaths.$app -PathType Leaf)
-            {
+            if (Test-Path -Path $knownPaths.$app -PathType Leaf) {
                 Write-Log -Message "Confirmed $app target at path $($knownPaths.$app)" -Function ProcessState
             } else {
                 Write-Log -Message "Unable to confirm $app target at path $($knownPaths.$app)" -Verbose -Function ProcessState
@@ -366,13 +335,11 @@ function Test-ProcessState
         Write-Log -Message "Checking if $ProcessName is running" -Function ProcessState
         Start-Sleep -Milliseconds 500
         $script:process = Get-Process -Name $ProcessName -ErrorAction SilentlyContinue
-        if ($Wait)
-        {
+        if ($Wait) {
             #Setup variables for the following nested while loops
             [int16]$script:InnerCounter = 0 # Start from zero
             [int16]$script:OuterCounter = 0 # Start from zero
-            while ($script:process)
-            {
+            while ($script:process) {
                 # it appears to be running; let's wait for it
                 Write-Log -Message "Found $ProcessName running. Wait parameter is True and delay duraction is $WaitTime milliseconds" -Function ProcessState
 
@@ -391,8 +358,7 @@ function Test-ProcessState
                     # As long as the per loop delay as less than 30 seconds (30000 ms), slow down the wait time on every other loop through
                     Write-Debug -Message "if ((($WaitTime*$LoopCount) -le 30000) -and ($OuterCounter%2 -eq 0))"
 
-                    if ((($WaitTime*$LoopCount) -le 30000) -and ($OuterCounter%2 -eq 0))
-                    {
+                    if ((($WaitTime*$LoopCount) -le 30000) -and ($OuterCounter%2 -eq 0)) {
                         # slow $waitTime by doubling it
                         $WaitTime = ($WaitTime * 2)
                         Write-Debug -Message "Increased `$waitTime to $WaitTime"
@@ -406,8 +372,7 @@ function Test-ProcessState
             }
             Write-Progress -Activity "Waiting for $ProcessName" -Status '.' -Completed
         } else {
-            if ($script:process)
-            {
+            if ($script:process) {
                 # it appears to be running
                 # Similar to: Get-Process -ProcessName *7z* | Select-Object -Property Name,Path | Format-Table -AutoSize
                 $script:process | ForEach-Object -Process {

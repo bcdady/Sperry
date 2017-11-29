@@ -11,7 +11,6 @@
 # Define new global variable for default printer
 New-Variable -Name DefaultPrinter -Description 'Default Printer' -Scope Global -ErrorAction Ignore
 
-Write-Verbose -Message 'Declaring function Get-Printer'
 function Get-Printer {
   <#
     .Synopsis
@@ -67,7 +66,6 @@ function Get-Printer {
     return $Script:printerInfo
 }
 
-Write-Verbose -Message 'Declaring Function Set-Printer'
 function Set-Printer {
     <#
         .SYNOPSIS
@@ -94,14 +92,16 @@ function Set-Printer {
     Write-Verbose "Preparing to set printer '$Name' as Default"
 
     # Try to Get-Printer
-    $PrinterObject = (Get-Printer | Where-Object -FilterScript {$PSItem.Name -like $Name})
+    Write-Verbose -Message "`$PrinterObject = (Get-Printer | Where-Object -FilterScript {`$PSItem.Name -like '*$Name*'})"
+    $PrinterObject = (Get-Printer | Where-Object -FilterScript {$PSItem.Name -like "*$Name*"})
+    Write-Verbose -Message "`$PrinterObject.ShareName is $($PrinterObject.ShareName)"
 
     if ($PrinterObject.ShareName) {
         # Specify .SetDefaultPrinter against ShareName
-        $WMIFilter = "ShareName='$Name'"
+        $WMIFilter = "ShareName=""$Name"""
     } else {
         # Specify .SetDefaultPrinter against Printer 'Name'
-        $WMIFilter = "Name='$Name'"
+        $WMIFilter = "Name=""$Name"""
     }
     
     # Use WMI to Set Default Printer // This must be WMI, as an otherwise matching CimInstance does not provide the .SetDefaultPrinter() method
