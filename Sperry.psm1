@@ -23,7 +23,7 @@ param ()
 # Define PSUpdateDate variable and populate from persistent state settings file
 New-Variable -Name PSHelpUpdatedDate -Description 'Date/time stamp of the last Update-Help run' -Scope Global -Force
 
-Set-Variable -Name Settings -Description "Sperry Settings" -Scope Global
+Set-Variable -Name MySettings -Description 'Sperry Settings' -Scope Global
 
 Write-Output -InputObject 'Importing shared saved state info from Microsoft.PowerShell_state.json to custom object: $PSState'
 try {
@@ -42,7 +42,7 @@ if ((Get-WmiObject -Class Win32_OperatingSystem -Property Caption).Caption -like
 # Functions
 #========================================
 # FYI this same function is also globally defined in ProfilePal module
-Function global:Test-LocalAdmin {
+Function script:Test-LocalAdmin {
     <#
         .SYNOPSIS
             Test if the current user of the current host (e.g. Console) have Admin permissions; returns simple boolean result
@@ -57,7 +57,7 @@ Function global:Test-LocalAdmin {
 } # end function Test-LocalAdmin
 
 Function Import-Settings {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Position = 0)]
         [ValidateNotNullOrEmpty()]
@@ -65,20 +65,20 @@ Function Import-Settings {
         $SettingsFileName = 'Sperry.json'
     )
   
-
+    Get-Variable -Scope Script
     # Enhancement : support -Force parameter
-    if (Get-Variable -Name Settings -Scope Global -ErrorAction Ignore) {
-        Remove-Variable -Name Settings -Scope Global
+    if (Get-Variable -Name MySettings -Scope Global -ErrorAction Ignore) {
+        Remove-Variable -Name MySettings -Scope Global
     }
-    Write-Debug -Message "`$JSONPath = join-path -Path `$(Split-Path -Path $PSCommandPath -Parent) -ChildPath $Script:SettingsFileName"
+    Write-Debug -Message ('`$JSONPath = join-path -Path `$(Split-Path -Path {0} -Parent) -ChildPath {1}' -f $PSCommandPath, $SettingsFileName)
     $JSONPath = join-path -Path $(Split-Path -Path $PSCommandPath -Parent) -ChildPath $SettingsFileName
-    Write-Debug -Message "`$Global:Settings = (Get-Content -Path $JSONPath) -join ""``n"" | ConvertFrom-Json"
-    $Global:Settings = (Get-Content -Path $JSONPath) -join "`n" | ConvertFrom-Json
+    Write-Verbose -Message ("`$Global:MySettings = (Get-Content -Path {0}) -join ""``n"" | ConvertFrom-Json" -f $JSONPath)
+    $Global:MySettings = (Get-Content -Path $JSONPath) -join "`n" | ConvertFrom-Json
 
-    if (Get-Variable -Name Settings -Scope Global -ValueOnly -ErrorAction Ignore) {
-    Write-Verbose -Message 'Settings imported. Run Show-Settings to see details.' 
+    if (Get-Variable -Name MySettings -Scope Global -ValueOnly -ErrorAction Ignore) {
+        Write-Verbose -Message 'Settings imported. Run Show-Settings to see details.' 
     } else {
-        write-warning -Message "Critical Error loading settings from $JSONPath"
+        write-warning -Message ('Critical Error loading settings from {0}' -f $JSONPath)
   }
 } # end function Import-Settings
 
@@ -117,83 +117,90 @@ Function Show-Settings {
   [CmdletBinding(SupportsShouldProcess)]
   param ()
   
-  if (-not (Get-Variable -Name Settings -Scope Global -ErrorAction Ignore)) {
+  if (-not (Get-Variable -Name MySettings -Scope Global -ErrorAction Ignore)) {
     Write-Verbose -Message 'Import Sperry configs'
     Import-Settings
   }
   
-  Write-Output -InputObject "`n # Showing `$Global:Settings, as imported from $Script:SettingsFileName #"
-  Write-Output -InputObject $Global:Settings
+  Write-Output -InputObject ''
+  Write-Output -InputObject (' # Showing `$Global:MySettings, as imported from {0} #' -f $Script:SettingsFileName)
+  Write-Output -InputObject $Global:MySettings
 } # end function Show-Settings
 
 function Mount-Path {
-  [CmdletBinding(SupportsShouldProcess)]
-  param ()
-  Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name # Log start time stamp
+    [CmdletBinding(SupportsShouldProcess)]
+    param ()
+    Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name # Log start time stamp
 
-  # $AllDrives = 1 (true) means map all drives; 0 (false) means only map H: and S:
-  Write-Log -Message 'Mapping Network Drives' -Function $MyInvocation.MyCommand.Name -Verbose
-  if (Test-LocalAdmin) { Write-Log -Message 'Mapping drives with a different account, may result in them NOT appearing properly in Explorer' -Function $MyInvocation.MyCommand.Name }
-
-  # Read in UNC path / drive letter mappings from sperry.json : Sperry.uncPaths
-  # loop through all defined drive mappings
-  $Global:Settings.UNCPath | ForEach-Object {
-    $DriveName = $ExecutionContext.InvokeCommand.ExpandString($PSItem.DriveName)
-    $PathRoot  = $ExecutionContext.InvokeCommand.ExpandString($PSItem.FullPath)
-
-    if (Test-Path -Path ('{0}:\' -f $DriveName)) {
-      # Write-Warning -Message ('Drive letter {0} already in use.' -f $DriveName)
-      Write-Log -Message ('Drive letter {0} already in use' -f $DriveName) -Function 'Mount-Path'
+    if (-not $Global:MySettings.UNCPath) {
+        Import-Settings
     }
-    elseif (-not (Test-Path -Path $PathRoot)) {
-      # Write-Warning -Message ('Path {0} was not found; unable to map to drive letter {1}' -f $PathRoot, $DriveName)            
-      Write-Log -Message ('Path {0} was not found; unable to map to drive letter {1}' -f $PathRoot, $DriveName) -Function 'Mount-Path' -Verbose
-    } else {
-      Write-Log -Message ('New-PSDrive {0}: {1}' -f $DriveName, $PathRoot) -Function 'Mount-Path'
-      Write-Debug -Message (' New-PSDrive -Persist -Name {0} -Root {1} -PSProvider FileSystem -scope Global' -f $DriveName, $PathRoot)
-      New-PSDrive -Name $DriveName -Root $PathRoot -PSProvider FileSystem -Persist -scope Global -ErrorAction:SilentlyContinue
-      Start-Sleep -Milliseconds 500
+    # $AllDrives = 1 (true) means map all drives; 0 (false) means only map H: and S:
+    Write-Log -Message 'Mapping Network Drives' -Function $MyInvocation.MyCommand.Name -Verbose
+    if (Test-LocalAdmin) { Write-Log -Message 'Mapping drives with a different account, may result in them NOT appearing properly in Explorer' -Function $MyInvocation.MyCommand.Name }
+
+    # Read in UNC path / drive letter mappings from sperry.json : Sperry.uncPaths
+    # loop through all defined drive mappings
+    $Global:MySettings.UNCPath | ForEach-Object {
+        Write-Debug -Message ('$PSItem.DriveName: {0}' -f $PSItem.DriveName)
+        Write-Debug -Message ('$PSItem.FullPath: {0}' -f $PSItem.FullPath)
+        $DriveName = $ExecutionContext.InvokeCommand.ExpandString($PSItem.DriveName)
+        $PathRoot  = $ExecutionContext.InvokeCommand.ExpandString($PSItem.FullPath)
+        Write-Verbose -Message ('$DriveName: {0}' -f $DriveName)
+        Write-Verbose -Message ('$PathRoot: {0}' -f $PathRoot)
+        
+        if (Test-Path -Path ('{0}:\' -f $DriveName)) {
+            # Write-Warning -Message ('Drive letter {0} already in use.' -f $DriveName)
+            Write-Log -Message ('Drive letter {0} already in use' -f $DriveName) -Function 'Mount-Path'
+        } elseif (-not (Test-Path -Path $PathRoot)) {
+            # Write-Warning -Message ('Path {0} was not found; unable to map to drive letter {1}' -f $PathRoot, $DriveName)            
+            Write-Log -Message ('Path {0} was not found; unable to map to drive letter {1}' -f $PathRoot, $DriveName) -Function 'Mount-Path' -Verbose
+        } else {
+            Write-Log -Message ('New-PSDrive {0}: {1}' -f $DriveName, $PathRoot) -Function 'Mount-Path'
+            Write-Debug -Message (' New-PSDrive -Persist -Name {0} -Root {1} -PSProvider FileSystem -scope Global' -f $DriveName, $PathRoot)
+            New-PSDrive -Name $DriveName -Root $PathRoot -PSProvider FileSystem -Persist -scope Global -ErrorAction:SilentlyContinue
+            Start-Sleep -Milliseconds 500
+        }
     }
-  }
-  Show-Progress -msgAction 'Stop' -msgSource $MyInvocation.MyCommand.Name # Log end time stamp
+    Show-Progress -msgAction 'Stop' -msgSource $MyInvocation.MyCommand.Name # Log end time stamp
 } # end function Mount-Path
 
 # Define Get-PSFSDrive function -- specifies invoking Get-PSDrive, for -PSProvider FileSystem 
 function Get-PSFSDrive {
-  Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name # Log start time stamp
-  Write-Log -Message 'Enumerating mapped network drives' -Function $MyInvocation.MyCommand.Name
-  get-psdrive -PSProvider FileSystem 
+    Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name # Log start time stamp
+    Write-Log -Message 'Enumerating mapped network drives' -Function $MyInvocation.MyCommand.Name
+    Get-PSDrive -PSProvider FileSystem
     Show-Progress -msgAction 'Stop' -msgSource $MyInvocation.MyCommand.Name # Log end time stamp
 } # end function Get-PSFSDrive
 
 # Define Dismount-Path function
 function Dismount-Path {
-  [CmdletBinding(SupportsShouldProcess)]
-  param ()
-  Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name # Log start time stamp
-  Write-Log -Message 'Removing mapped network drives' -Function $MyInvocation.MyCommand.Name
-  Get-PSDrive -PSProvider FileSystem | ForEach-Object {
-    if ($PSItem.DisplayRoot -like '\\*') {
-      Write-Log -Message ('Remove-PSDrive {0}: {1}' -f $PSItem.Name, $PSItem.DisplayRoot) -Function $MyInvocation.MyCommand.Name
-      Remove-PSDrive -Name $PSItem
+    [CmdletBinding(SupportsShouldProcess)]
+    param ()
+    Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name # Log start time stamp
+    Write-Log -Message 'Removing mapped network drives' -Function $MyInvocation.MyCommand.Name
+    Get-PSDrive -PSProvider FileSystem | ForEach-Object {
+        if ($PSItem.DisplayRoot -like '\\*') {
+            Write-Log -Message ('Remove-PSDrive {0}: {1}' -f $PSItem.Name, $PSItem.DisplayRoot) -Function $MyInvocation.MyCommand.Name
+            Remove-PSDrive -Name $PSItem
+        }
     }
-  }
-  Show-Progress -msgAction 'Stop' -msgSource $MyInvocation.MyCommand.Name # Log end time stamp
+    Show-Progress -msgAction 'Stop' -msgSource $MyInvocation.MyCommand.Name # Log end time stamp
 } # end function Dismount-Path
 
 function Get-WiFi {
-  <#
-      .SYNOPSIS
-      List Availability WiFi networks
-      .DESCRIPTION
-      Designed as a complement to Connect-WiFi, this function pulls available wifi network SIDs into this PowerShell context
-      .EXAMPLE
-      .\> Get-WiFi
-  #>
-  Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name # Log start time stamp
-  Write-Log -Message 'netsh.exe wlan show networks' -Function $MyInvocation.MyCommand.Name -Verbose
-  Invoke-Command -ScriptBlock {& "$env:windir\system32\netsh.exe" wlan show networks}
-  Show-Progress -msgAction 'Stop' -msgSource $MyInvocation.MyCommand.Name # Log end time stamp
+    <#
+        .SYNOPSIS
+        List Availability WiFi networks
+        .DESCRIPTION
+        Designed as a complement to Connect-WiFi, this function pulls available wifi network SIDs into this PowerShell context
+        .EXAMPLE
+        .\> Get-WiFi
+    #>
+    Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name # Log start time stamp
+    Write-Log -Message 'netsh.exe wlan show networks' -Function $MyInvocation.MyCommand.Name -Verbose
+    Invoke-Command -ScriptBlock {& "$env:windir\system32\netsh.exe" wlan show networks}
+    Show-Progress -msgAction 'Stop' -msgSource $MyInvocation.MyCommand.Name # Log end time stamp
 } # end function Get-WiFi
 
 function Connect-WiFi {
@@ -246,19 +253,19 @@ function Connect-WiFi {
   Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name # Log start time stamp
 
   # Check and conditionally open UAC window, before invoking repeated elevated commands
-  Write-Log -Message 'Checking UserAccountControl level' -Function $loggingTag
+  Write-Log -Message 'Checking UserAccountControl level' -Function $MyInvocation.MyCommand.Name
   Open-UAC
   
-  Set-ServiceGroup -Name 'Sophos Client Firewall*' -Status Stopped
+  Set-ServiceGroup -Name '*Firewall*' -Status Stopped
 
-    Write-Log -Message ("Connecting {0} to {1}" -f $ConnectionID, $SSID) -Function $MyInvocation.MyCommand.Name
+    Write-Log -Message ('Connecting {0} to {1}' -f $ConnectionID, $SSID) -Function $MyInvocation.MyCommand.Name
 
     if ((Get-NetConnStatus -ConnectionID $ConnectionID | Select-Object -Property Availability) -ne 3) {
       if (Test-LocalAdmin) {
         if (($PSItem.enable()).ReturnValue -eq 0) {
           Write-Log -Message 'Adapter Enabled' -Function $MyInvocation.MyCommand.Name
         } else {
-          throw ("A fatal error was encountered trying to enable Network Adapter {0} (Device {1})" -f $PSItem.Name,$PSItem.DeviceID)
+          throw ('A fatal error was encountered trying to enable Network Adapter {0} (Device {1})' -f $PSItem.Name,$PSItem.DeviceID)
         }
       } else {
         Write-Log -Message 'Attempting to invoke new powershell sessions with RunAs (elevated permissions) to enable adapter via' -Function $MyInvocation.MyCommand.Name
@@ -266,18 +273,18 @@ function Connect-WiFi {
         if ($return -eq 0) {
           Write-Log -Message 'Adapter Enabled' -Function $MyInvocation.MyCommand.Name
         } else {
-          Write-Log -Message ("A fatal error was encountered trying to enable Network Adapter {0} (Device {1})" -f $PSItem.Name,$PSItem.DeviceID) -Verbose
+          Write-Log -Message ('A fatal error was encountered trying to enable Network Adapter {0} (Device {1})' -f $PSItem.Name,$PSItem.DeviceID) -Verbose
         }
       }
       Start-Sleep -Seconds 1
     }
 
-    Write-Log -Message "netsh.exe wlan connect $SSID" -Function $MyInvocation.MyCommand.Name
+    Write-Log -Message ('netsh.exe wlan connect {0}' -f $SSID) -Function $MyInvocation.MyCommand.Name
     $results = Invoke-Command -ScriptBlock {& "$env:windir\system32\netsh.exe" wlan connect "$SSID"}
     Write-Log -Message $results -Function $MyInvocation.MyCommand.Name
     Start-Sleep -Seconds $WaitTime
 
-  return $results
+    return $results
 
   Show-Progress -msgAction 'Stop' -msgSource $MyInvocation.MyCommand.Name # Log end time stamp
 
@@ -307,36 +314,36 @@ function Disconnect-WiFi {
 } # end function Disconnect-WiFi
 
 function Get-IPAddress {
-<#
-    .SYNOPSIS
-    Returns Adapter description, IP Address, and basic DHCP info.
-    .DESCRIPTION
-    Uses Get-WmiObject -Class Win32_NetworkAdapterConfiguration queries, for IP enabled network adapters, this function returns the IP Addresses (IPv4 and IPv6, if available), default gateway, DNS server list, and adapter description and index.
-    .EXAMPLE
-    PS C:\> Get-IPAddress
-    Get-IPAddress
-    Logging to $env:USERPROFILE\Documents\WindowsPowerShell\log\Get-IPAddress_20150430.log
+  <#
+      .SYNOPSIS
+      Returns Adapter description, IP Address, and basic DHCP info.
+      .DESCRIPTION
+      Uses Get-WmiObject -Class Win32_NetworkAdapterConfiguration queries, for IP enabled network adapters, this function returns the IP Addresses (IPv4 and IPv6, if available), default gateway, DNS server list, and adapter description and index.
+      .EXAMPLE
+      PS C:\> Get-IPAddress
+      Get-IPAddress
+      Logging to $env:USERPROFILE\Documents\WindowsPowerShell\log\Get-IPAddress_20150430.log
 
-    SiteName           : Unrecognized
-    AdapterHost        : ComputerName
-    Gateway            : {192.168.1.11}
-    IPAddress          : {192.168.1.106}
-    DNSServers         : {192.168.0.1, 208.67.220.220, 208.67.222.222}
-    AdapterDescription : Intel(R) Wireless-N 7260
-    .EXAMPLE
-    PS C:\> Get-IPAddress.IPAddress
-    # Returns only the IP Address(es) of DHCP enabled adapters, as a string
-    10.10.101.123
-    .NOTES
-    NAME        :  Get-IPAddress
+      SiteName           : Unrecognized
+      AdapterHost        : ComputerName
+      Gateway            : {192.168.1.11}
+      IPAddress          : {192.168.1.106}
+      DNSServers         : {192.168.0.1, 208.67.220.220, 208.67.222.222}
+      AdapterDescription : Intel(R) Wireless-N 7260
+      .EXAMPLE
+      PS C:\> Get-IPAddress.IPAddress
+      # Returns only the IP Address(es) of DHCP enabled adapters, as a string
+      10.10.101.123
+      .NOTES
+      NAME        :  Get-IPAddress
       VERSION     :  1.0.2
       LAST UPDATED:  7/7/2017
-    AUTHOR      :  Bryan Dady
-    .INPUTS
-    None
-    .OUTPUTS
-    Write-Log
-#>
+      AUTHOR      :  Bryan Dady
+      .INPUTS
+      None
+      .OUTPUTS
+      Write-Log
+  #>
   New-Variable -Name OutputObj -Description 'Object to be returned by this function' -Scope Private
   Get-WmiObject -Class Win32_NetworkAdapterConfiguration -Filter 'IpEnabled = True' |
   ForEach-Object -Process {
@@ -350,7 +357,7 @@ function Get-IPAddress {
     }
     $Private:RetObject = New-Object -TypeName PSObject -Property $properties
 
-    return $RetObject # $OutputObj
+    return $Private:RetObject # $OutputObj
   } # end of foreach
 } # end function Get-IPAddress
 
@@ -373,15 +380,25 @@ function Redo-DHCP {
   foreach ($Private:adapter in $Private:ethernet) {
     Write-Debug -Message 'Releasing IP Address'
     Start-Sleep -Seconds 2
-    $Private:adapter.ReleaseDHCPLease() | out-Null
+    $null = $Private:adapter.ReleaseDHCPLease()
     Write-Debug -Message 'Renewing IP Address'
-    $Private:adapter.RenewDHCPLease() | out-Null
+    $null = $Private:adapter.RenewDHCPLease()
     Write-Log -Message ('IP address is {0} with Subnet {1}' -f $adapter.IPAddress, $adapter.IPSubnet) -Function $MyInvocation.MyCommand.Name
   }
   return Get-IPAddress
 } # end function Redo-DHCP
 
 function Open-UAC {
+  <#
+      .SYNOPSIS
+      Open Windows User Account Control Settings application window.
+
+      .DESCRIPTION
+      Detects if current UAC setting is other than this functions expected Default setting (such as Always Notify or lesser than Default options), by inspecting the ConsentPromptBehaviorAdmin value in the local Windows registry.
+      If ConsentPromptBehaviorAdmin is other than the expected/Default value, the UserAccountControlSettings.exe is invoked.
+  #>
+
+
   Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name # Log start time stamp
   # Check current UAC level via registry
   # We want ConsentPromptBehaviorAdmin = 5
@@ -389,9 +406,9 @@ function Open-UAC {
     $ConsentPromptBehaviorAdmin = (Get-ItemProperty -path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -name 'ConsentPromptBehaviorAdmin').ConsentPromptBehaviorAdmin
     if ($ConsentPromptBehaviorAdmin -eq 5) {
         # prompt for UAC update
-        Write-Verbose -Message "User Account Control set to an approved level: $ConsentPromptBehaviorAdmin"
+        Write-Verbose -Message ('User Account Control set to an approved level: {0}' -f $ConsentPromptBehaviorAdmin)
     } elseif ($ConsentPromptBehaviorAdmin -eq 0) {
-        Write-Verbose -Message "User Account Control set to an approved level: $ConsentPromptBehaviorAdmin"
+        Write-Verbose -Message ('User Account Control set to an approved level: {0}' -f $ConsentPromptBehaviorAdmin)
     } else {
     Write-Log -Message 'Opening User Account Control Settings dialog ...' -Function $MyInvocation.MyCommand.Name
     & $env:SystemDrive\Windows\System32\UserAccountControlSettings.exe
@@ -419,11 +436,11 @@ Function Open-Browser {
     $URL
   )
 
-  Write-Verbose -Message "Start-Process -FilePath $URL"
-  if (-not ($URL -match "^http?:\/\/?.+\.\w{2,6}}")) {
+  Write-Verbose -Message ('Start-Process -FilePath {0}' -f $URL)
+  if (-not ($URL -match '^http?:\/\/?.+\.\w{2,6}}')) {
     Write-Verbose -Message 'Prepending ambiguous $URL with https://'
     $URL = 'https://' + $URL
-}
+  }
 
   Start-Process -FilePath $URL
 } # end function Open-Browser
@@ -447,83 +464,83 @@ function Set-Workplace {
     )]
     [String]
     [alias('mode','scope')]
-    [ValidateScript({$PSItem -in $Global:Settings.Workplace.Name})]
+    [ValidateScript({$PSItem -in $Global:MySettings.Workplace.Name})]
     $Zone
   )
-  $loggingTag = $MyInvocation.MyCommand.Name
+
   Show-Progress -msgAction Start -msgSource $MyInvocation.MyCommand.Name
 
   # Always simplify UAC prompt level, so we run this before {switching ($zone)}
-  Write-Log -Message 'Checking UserAccountControl level' -Function $loggingTag
+  Write-Log -Message 'Checking UserAccountControl level' -Function $MyInvocation.MyCommand.Name
   Open-UAC
 
-  Write-Log -Message "Loading settings for Workplace $zone as defined in $SettingsFileName." -Function $loggingTag -Verbose
-  $MySettings = $Global:Settings.Workplace | Where-Object -FilterScript {$PSItem.Name -eq $zone}
+  Write-Log -Message ('Loading settings for Workplace {0} as defined in {1}.' -f $zone, $SettingsFileName) -Function $MyInvocation.MyCommand.Name -Verbose
+  $MySettings = $Global:MySettings.Workplace | Where-Object -FilterScript {$PSItem.Name -eq $zone}
 
   if (-not ($MySettings.function_before)) {
-    Write-Log '$MySettings.function_before was not found.' -Function $loggingTag
+    Write-Log -Message '$MySettings.function_before was not found.' -Function $MyInvocation.MyCommand.Name
   } else {
     $MySettings.function_before | ForEach-Object -Process {
-      Write-Debug -Message "Function $($PSItem.Name) - Message: $($PSItem.Message)"
-      Write-Log -Message "$($PSItem.Message)" -Function $loggingTag
+      Write-Debug -Message ('Function {0} - Message: {1}' -f $PSItem.Name, $PSItem.Message)
+      Write-Log -Message ('{0}' -f $PSItem.Message) -Function $MyInvocation.MyCommand.Name
       Invoke-Expression -Command $PSItem.Name
       Start-Sleep -Milliseconds 777
     }
   }
 
   if (-not ($MySettings.ServiceGroup)) {
-    Write-Log '$MySettings.ServiceGroup was not found.' -Function $loggingTag
+    Write-Log -Message '$MySettings.ServiceGroup was not found.' -Function $MyInvocation.MyCommand.Name
   } else {
     $MySettings.ServiceGroup | ForEach-Object -Process {
-      Write-Log -Message ('{0}' -f $PSItem.Message) -Function $loggingTag
+      Write-Log -Message ('{0}' -f $PSItem.Message) -Function $MyInvocation.MyCommand.Name
       Set-ServiceGroup -Name $PSItem.Name -Status $PSItem.Status
       Start-Sleep -Milliseconds 777
     }
   }
 
   if (-not ($MySettings.ProcessState)) {
-    Write-Log '$MySettings.ProcessState was not found.' -Function $loggingTag
+    Write-Log -Message '$MySettings.ProcessState was not found.' -Function $MyInvocation.MyCommand.Name
   } else {
     $MySettings.ProcessState | ForEach-Object -Process {
-      Write-Log -Message ('{0}' -f $PSItem.Message) -Function $loggingTag
+      Write-Log -Message ('{0}' -f $PSItem.Message) -Function $MyInvocation.MyCommand.Name
       Set-ProcessState -Name $PSItem.Name -Action $PSItem.Action
       Start-Sleep -Milliseconds 777
     }
   }
 
   # Update IE home page
-  Write-Log -Message 'Setting Internet Explorer start page to $($MySettings.IEHomePage)' -Function $loggingTag
+  Write-Log -Message 'Setting Internet Explorer start page to $($MySettings.IEHomePage)' -Function $MyInvocation.MyCommand.Name
   Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Internet Explorer\Main' -Name 'Start Page' -Value $MySettings.IEHomePage -force -ErrorAction Ignore
   Set-ItemProperty -Path 'HKCU:\Software\Policies\Microsoft\Internet Explorer\Main' -Name 'Start Page' -Value $MySettings.IEHomePage -force -ErrorAction Ignore
 
   # Set preferred / defined default browser
-  Write-Log -Message "Updating default browser via registry edit" -Function $loggingTag
+  Write-Log -Message 'Updating default browser via registry edit' -Function $MyInvocation.MyCommand.Name
   # In case the reg key does not yet exist, we must first create it, as New-ItemProperty can not make a new reg key item prior to setting a property of the item
   if (-not (Test-Path -Path HKCU:\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\http\UserChoice)) {
-    Write-Log -Message "Creating registry key items for http URL Associations" -Function $loggingTag
+    Write-Log -Message 'Creating registry key items for http URL Associations' -Function $MyInvocation.MyCommand.Name
     New-Item -Path HKCU:\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\http\UserChoice-Force
   }
 
   if (-not (Test-Path -Path HKCU:\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoice)) {
-    Write-Log -Message "Creating registry key items for https URL Associations" -Function $loggingTag
+    Write-Log -Message 'Creating registry key items for https URL Associations' -Function $MyInvocation.MyCommand.Name
     New-Item -Path HKCU:\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoice -Force
   }
   
-  Write-Log -Message "Setting URL Progid to $($MySettings.BrowserProgid)" -Function $loggingTag
+  Write-Log -Message ('Setting URL Progid to {0}' -f $MySettings.BrowserProgid) -Function $MyInvocation.MyCommand.Name
   Set-ItemProperty -Path HKCU:\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\http\UserChoice -Name Progid -Value $MySettings.BrowserProgid -Force
   Set-ItemProperty -Path HKCU:\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoice -Name Progid -Value $MySettings.BrowserProgid -Force
 
   $MySettings.function_after | ForEach-Object -Process {
-    Write-Log -Message "$($PSItem.Message)" -Function $PSItem.Name
+    Write-Log -Message ('{0}' -f $PSItem.Message) -Function $PSItem.Name
     Invoke-Expression -Command $PSItem.Name
     Start-Sleep -Milliseconds 777
   }
 
     if (-not ($MySettings.Printer)) {
-    Write-Log '$MySettings.Printer preference was not found.' -Function $loggingTag
+    Write-Log -Message '$MySettings.Printer preference was not found.' -Function $MyInvocation.MyCommand.Name
   } else {
     $MySettings.Printer | ForEach-Object -Process {
-      Write-Log -Message ('Setting default printer: {0}' -f $MySettings.Printer) -Function $loggingTag
+      Write-Log -Message ('Setting default printer: {0}' -f $MySettings.Printer) -Function $MyInvocation.MyCommand.Name
       Set-Printer -printerShareName $MySettings.Printer
       Start-Sleep -Milliseconds 333
     }
@@ -531,17 +548,9 @@ function Set-Workplace {
 
   Write-Output -InputObject 'If you''d like to (re)open all Desktop Documents, run Show-DesktopDocuments'
 
-  Show-Progress -msgAction Stop -msgSource $loggingTag  # Log end time stamp
+  Show-Progress -msgAction Stop -msgSource $MyInvocation.MyCommand.Name  # Log end time stamp
 
   return ('Ready for {0} work' -f $zone)
 } # end function Set-Workplace
 
-Function Show-DesktopDocuments {
-  [CmdletBinding(SupportsShouldProcess)]
-  param ()
-  Write-Log -Message 'Opening all Desktop Documents' -Function $MyInvocation.MyCommand.Name
-  # Open all desktop PDF files
-  Get-ChildItem -Path $env:USERPROFILE\Desktop\*.pdf | ForEach-Object { & $_ ; Start-Sleep -Milliseconds 400}
-  # Open all desktop Word doc files
-  Get-ChildItem -Path $env:USERPROFILE\Desktop\*.doc* | ForEach-Object { & $_ ; Start-Sleep -Milliseconds 800}
-}
+

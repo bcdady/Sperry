@@ -28,42 +28,40 @@ function Get-Printer {
     [OutputType([int])]
     Param (
         # List Default printer
-        [switch]
-        $Default,
+        [switch]$Default,
         # Enumerate only local printers
-        [switch]
-        $Local,
+        [switch]$Local,
         # Enumerate only network printers
-        [switch]
-        $Network
+        [switch]$Network
     )
+
     Show-Progress -msgAction Start -msgSource $PSCmdlet.MyInvocation.MyCommand.Name
-    [string]$Script:CIMfilter = ''
+    [string]$CIMfilter = ''
 
     if ($Default) {
-        $Script:CIMfilter = "Default='True'"
+        $CIMfilter = "Default='True'"
     } elseif ($Local) {
-        $Script:CIMfilter = "Local='True'"
+        $CIMfilter = "Local='True'"
     } elseif ($Network) {
-        $Script:CIMfilter = "Network='True'"
+        $CIMfilter = "Network='True'"
     } 
     # else  $CIMfilter remains $null, so returns all results
     if ($CIMfilter) {
         # Query CIM with -Filter
-        $Script:printerInfo = Get-CimInstance -ClassName Win32_Printer -Filter $CIMfilter | Select-Object -Property Name, ShareName, ServerName, CapabilityDescriptions, Default, Local, Network, DriverName
+        $printerInfo = Get-CimInstance -ClassName Win32_Printer -Filter $CIMfilter | Select-Object -Property Name, ShareName, ServerName, CapabilityDescriptions, Default, Local, Network, DriverName
     } else {
         # Query CIM withOUT -Filter
-        $Script:printerInfo = Get-CimInstance -ClassName Win32_Printer | Select-Object -Property Name, ShareName, ServerName, CapabilityDescriptions, Default, Local, Network, DriverName
+        $printerInfo = Get-CimInstance -ClassName Win32_Printer | Select-Object -Property Name, ShareName, ServerName, CapabilityDescriptions, Default, Local, Network, DriverName
     }
 
     # If default parameter was specified, update default printer
     if ($Default) {
-        $Global:DefaultPrinter = $Script:printerInfo
+        $Global:DefaultPrinter = $printerInfo
     }
     
     Show-Progress -msgAction Stop -msgSource $PSCmdlet.MyInvocation.MyCommand.Name
 
-    return $Script:printerInfo
+    return $printerInfo
 }
 
 function Set-Printer {

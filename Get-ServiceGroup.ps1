@@ -63,7 +63,7 @@ function Get-ServiceGroup {
         [ValidateSet('Running', 'Stopped')]
         $Status = 'Running'
     )
-    [bool]$StatusMatch = $null
+    [bool]$StatusMatch = $false
     # reset variables
     $Services = @()
     $ServiceCount = 0
@@ -92,18 +92,18 @@ function Get-ServiceGroup {
     Write-Debug -Message "Get-ServiceGroup $Status = $StatusMatch"
 
     # Define properties of custom object to be returned
-    $script:properties = [Ordered]@{
+    $Private:properties = [Ordered]@{
         'Name'         = $ServiceName
         'Status'       = $Status
         'ServiceCount' = $ServiceCount
         'StatusMatch'  = $StatusMatch
     }
-    $script:RetObject = New-Object -TypeName PSObject -Prop $script:properties
+    $Private:RetObject = New-Object -TypeName PSObject -Property $Private:properties
 
     Show-Progress -Mode Stop -Action ServiceGroup
     # Log stop time-stamp
 
-    return $script:RetObject
+    return $Private:RetObject
     <#
         Model resulting / returned object after Service object
       TypeName: System.ServiceProcess.ServiceController
@@ -198,31 +198,32 @@ function Set-ServiceGroup {
         Write-Log -Message "$ServiceName services were NOT confirmed $Status" -Function ServiceGroup
         # Need to change status of all services in the group 
         if (Test-LocalAdmin) {
-          # We have elevated permissions; proceed with controlling services
-          switch ($Status) {
-            'Running' {
-              Write-Log -Message 'Confirmed elevated privileges; Starting $ServiceName services' -Function ServiceGroup
-              Start-Service -Name $ServiceName -PassThru | Format-Table -AutoSize -Property Name,Status
-              Start-Sleep -Seconds 1
-            }
-            'Stopped' {
-              Write-Log -Message 'Confirmed elevated privileges; Stopping $ServiceName services' -Function ServiceGroup
-              Stop-Service -Name $ServiceName -PassThru | Format-Table -AutoSize -Property Name,Status
-              Start-Sleep -Seconds 1
-            }
-          }        
+            # We have elevated permissions; proceed with controlling services
+            switch ($Status) {
+                'Running' {
+                    Write-Log -Message 'Confirmed elevated privileges; Starting $ServiceName services' -Function ServiceGroup
+                    Start-Service -Name $ServiceName -PassThru | Format-Table -AutoSize -Property Name,Status
+                    Start-Sleep -Seconds 1
+                }
+                'Stopped' {
+                    Write-Log -Message 'Confirmed elevated privileges; Stopping $ServiceName services' -Function ServiceGroup
+                    Stop-Service -Name $ServiceName -PassThru | Format-Table -AutoSize -Property Name,Status
+                    Start-Sleep -Seconds 1
+                }
+            }        
         } else {
             # Before we attempt to elevate permissions, check current services state 
             Write-Debug -Message "StatusMatch: $StatusMatch"
 
             Write-Log -Message 'Need elevated privileges to proceed ... attempting Start-Service using admin privileges.' -Function ServiceGroup -Verbose
             # Check and conditionally open UAC window, before invoking repeated elevated commands
-            Write-Log -Message 'Checking UserAccountControl level' -Function $loggingTag
-            Update-UAC
+            Write-Log -Message 'Checking UserAccountControl level' -Function ServiceGroup
+            Open-UAC
 
             $CommandString = "Set-ServiceGroup -ServiceName {0} -Status {1} -Verbose" -f "'$ServiceName'",$Status
             Write-Debug -Message "Open-AdminConsole -Command $CommandString"
             Open-AdminConsole -Command $CommandString -Verbose
+            Start-Sleep -Seconds 1
         }
 
         # Get ServiceGroup and show output

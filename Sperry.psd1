@@ -17,7 +17,7 @@
 RootModule = 'Sperry.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.10.0'
+ModuleVersion = '1.10.1'
 
 # ID used to uniquely identify this module
 GUID = 'bf8bf3a6-11b1-48b7-8a6d-d4cbd812b906'
@@ -59,7 +59,7 @@ RequiredModules = @('PSLogger')
 # RequiredAssemblies = @()
 
 # Script files (.ps1) that are run in the caller's environment prior to importing this module.
-ScriptsToProcess = @('ProcessState.ps1', 'ClearCookies.ps1', 'Get-ProcessByUser.ps1', 'Get-ServiceGroup.ps1', 'Get-Connected.ps1')
+ScriptsToProcess = @('AdminConsole.ps1', 'ProcessState.ps1', 'ClearCookies.ps1', 'Get-ProcessByUser.ps1', 'Get-ServiceGroup.ps1', 'Get-Connected.ps1')
 
 # Type files (.ps1xml) to be loaded when importing this module
 # TypesToProcess = @()
@@ -72,13 +72,13 @@ NestedModules = @('PrinterFunctions.psm1')
 
 # Functions to export from this module
 FunctionsToExport = @('Clear-IECookie', 'Connect-WiFi', 'Disconnect-WiFi', 'Dismount-Path', 'Get-IECookie', 'Get-IPAddress','Get-NetConnStatus', 'Get-Printer', 'Get-ProcessByUser', 'Get-PSFSDrive', 'Get-ServiceGroup', 'Get-WiFi',
-                    'global:Test-LocalAdmin', 'Import-Settings', 'Mount-Path', 'Open-Browser', 'Redo-DHCP', 'Set-NetConnStatus', 'Set-Printer', 'Set-ProcessState', 'Set-ServiceGroup', 'Set-UAC', 'Set-Workplace', 'Show-DesktopDocuments', 'Show-Settings', 'Test-ProcessState')
+                    'global:Test-LocalAdmin', 'Import-Settings', 'Mount-Path', 'Open-AdminConsole', 'Open-Browser', 'Redo-DHCP', 'Set-NetConnStatus', 'Set-Printer', 'Set-ProcessState', 'Set-ServiceGroup', 'Open-UAC', 'Set-Workplace', 'Show-DesktopDocuments', 'Show-Settings', 'Test-ProcessState', 'Test-LocalAdmin')
 
 # Cmdlets to export from this module
 # CmdletsToExport = '*'
 
 # Variables to export from this module
-VariablesToExport = 'DefaultPrinter'
+VariablesToExport = 'DefaultPrinter', 'IsAdmin'
 
 # List of all modules packaged with this module
 ModuleList = @('PrinterFunctions.psm1') # , 'StartXenApp.psm1'
