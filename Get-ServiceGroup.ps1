@@ -76,9 +76,7 @@ function Get-ServiceGroup {
     $Services = @(Get-Service -Name $ServiceName) 
     $ServiceCount = $Services.Count
     Write-Log -Message ('Service Count: {0}' -f $ServiceCount) -Function ServiceGroup
-#    Write-Verbose -Message ('Status Count: {0}' -f $StatusCount)
     Write-Log -Message ('Checking count of {0} services with status of {1}' -f $ServiceName, $Status) -Function ServiceGroup
-#    Write-Verbose -Message ('Checking count of {0} services with status of {1}' -f $ServiceName, $Status)
     $StatusCount = @($Services | Where-Object -FilterScript { $PSItem.Status -eq $Status }).Count
     Write-Log -Message ('Service Count matching Status: {0}' -f $ServiceCount) -Function ServiceGroup
 #    Write-Verbose -Message ('Service Count matching Status: {0}' -f $ServiceCount)
@@ -104,29 +102,6 @@ function Get-ServiceGroup {
     # Log stop time-stamp
 
     return $Private:RetObject
-    <#
-        Model resulting / returned object after Service object
-      TypeName: System.ServiceProcess.ServiceController
-
-      Name                MemberType    Definition
-      ----                ----------    ----------
-      Status              Property      System.ServiceProcess.ServiceControllerStatus Status {get;}
-      Name                AliasProperty Name = ServiceName
-      ServiceName         Property      string ServiceName {get;set;}
-      DisplayName         Property      string DisplayName {get;set;}
-      RequiredServices    AliasProperty RequiredServices = ServicesDependedOn
-      CanPauseAndContinue Property      bool CanPauseAndContinue {get;}
-      CanShutdown         Property      bool CanShutdown {get;}
-      CanStop             Property      bool CanStop {get;}
-      Container           Property      System.ComponentModel.IContainer Container {get;}
-      DependentServices   Property      System.ServiceProcess.ServiceController[] DependentServices {get;}
-      MachineName         Property      string MachineName {get;set;}
-      ServiceHandle       Property      System.Runtime.InteropServices.SafeHandle ServiceHandle {get;}
-      ServicesDependedOn  Property      System.ServiceProcess.ServiceController[] ServicesDependedOn {get;}
-      ServiceType         Property      System.ServiceProcess.ServiceType ServiceType {get;}
-      Site                Property      System.ComponentModel.ISite Site {get;set;}
-      StartType           Property      System.ServiceProcess.ServiceStartMode StartType {get;}
-    #>
 }
 
 Write-Verbose -Message "Declaring function Set-ServiceGroup"
@@ -169,9 +144,8 @@ function Set-ServiceGroup {
   #>
     # Calculates the cumulative status of all services matching the Name parameter
     Param(
-        [Parameter(
+        [Parameter(Position = 0,
             Mandatory,
-            Position = 0,
             HelpMessage = 'Specify service name to match. Accepts partial names.'
         )]
         [String]
@@ -187,7 +161,6 @@ function Set-ServiceGroup {
 
     [bool]$StatusMatch = $null
 
-  #    $ErrorActionPreference = 'SilentlyContinue'
     Show-Progress -Mode Start -Action ServiceGroup
     # Log start time-stamp
     $StatusMatch = $((Get-ServiceGroup -ServiceName $ServiceName -Status $Status | Select-Object -Property Name, StatusMatch).StatusMatch)
@@ -223,7 +196,7 @@ function Set-ServiceGroup {
             $CommandString = "Set-ServiceGroup -ServiceName {0} -Status {1} -Verbose" -f "'$ServiceName'",$Status
             Write-Debug -Message "Open-AdminConsole -Command $CommandString"
             Open-AdminConsole -Command $CommandString -Verbose
-            Start-Sleep -Seconds 1
+            Start-Sleep -Seconds 6
         }
 
         # Get ServiceGroup and show output
