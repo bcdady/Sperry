@@ -1,50 +1,145 @@
 # Sperry
-The Sperry 'autopilot' module includes functions to automate changes related to working in a specific office network environment, vs working elsewhere, or remotely
 
-### Contains 5 functions / cmdlets:
+The Sperry 'autopilot' module includes functions to automate changes related to working in a specific office network environment, vs working remotely (away from that office network).
 
-##### Set-Workplace
+ - (Add a comment about the etymology of 'Sperry')
+
+## Contents
+
+### ScriptsToProcess
+
+AdminConsole.ps1
+
+- [Test-LocalAdmin](#test-localadmin)
+
+- [Open-AdminConsole](#open-adminconsole)
+
+ProcessState.ps1
+
+- [Set-ProcessState](#set-processstate)
+
+- [Test-ProcessState](#test-processstate)
+
+ClearCookies.ps1
+
+Get-ProcessByUser.ps1
+
+Get-ServiceGroup.ps1
+
+Get-Connected.ps1
+
+### functions
+
+#### Set-Workplace
+
 The primary cmdlet. If you'd like to adopt Sperry for your own use, you'll want to customize the tasks and operations called from Set-Workplace. Most of the following functions are invoked from within the Set-Workplace function, but are also exported for direct use. You may find that some of these are not useful for you, or you may want/need to customize them to your own workplace/context(s). If you review the code, and have questions about how or why it works for me, please ask; I'd be glad to share my thoughts, and perhaps learn a better way.
 
-Parameters (copy from inline help)
+- Needs comment-based help
 
-##### Get-IECookies
+Clear-IECookie
+Connect-WiFi
+Disconnect-WiFi
+Dismount-Path
+Get-IECookie
+Get-IPAddress
+Get-NetConnStatus
+Get-Printer
+Get-ProcessByUser
+Get-PSFSDrive
+Get-ServiceGroup
+Get-WiFi
+Import-Settings
+Mount-Path
+Open-AdminConsole
+Open-Browser
+Open-UAC
+Redo-DHCP
+Set-NetConnStatus
+Set-Printer
+Set-ProcessState
+Set-ServiceGroup
+Set-Workplace
+Show-DesktopDocuments
+Show-Settings
+Test-LocalAdmin
+Test-ProcessState
+
+#### Clear-IECookie
+
+#### Connect-WiFi
+
+#### Disconnect-WiFi
+
+#### Dismount-Path
+
+#### Get-IECookie
+
 Basically just a read-only replica of Clear-IECookies
- 
-##### Clear-IECookies
 
-##### Connect-WiFi
+#### Get-IPAddress
 
-##### Disconnect-WiFi
+#### Get-NetConnStatus
 
-##### Get-Printer
+    PS .\>Get-NetConnStatus
 
-##### Set-Printer
+    No ConnectionID specified; enumerating physical network adapters
 
-##### Get-IPAddress
+    Name                                       NetConnectionID
+    ----                                       ---------------
+    Intel(R) Ethernet Connection I219-V        Local Area Connection
+    Intel(R) Dual Band Wireless-AC 8260        Wireless
+    Microsoft Virtual WiFi Miniport Adapter    Wireless Network Connection
 
-##### Redo-DHCP
+#### Get-Printer
 
-##### Set-DriveMaps
+#### Get-ProcessByUser
 
-##### Remove-DriveMaps
+#### Get-PSFSDrive
 
-##### Get-SophosFW
+#### Set-Printer
 
-##### Set-SophosFW
+#### Redo-DHCP
 
-##### Start-CitrixReceiver
+#### Set-DriveMaps
 
-##### Start-XenApp
+#### Remove-DriveMaps
 
-##### Test-LocalAdmin
+#### Test-LocalAdmin
 
-##### Set-UAC
+##### Open-UAC
 
-##### Start-Robosync
+#### Set-ProcessState
 
-##### Set-ProcessState
+#### Test-ProcessState
 
-##### Test-ProcessState
+SYNOPSIS
 
-##### Enter-XASession
+    A helper function for streamlining start-process and stop-process cmdlet interactions for predefined executable file paths and their arguments / parameters.
+
+DESCRIPTION
+
+    Using the ProcessName parameter, and the internally defined $knownPaths hash table, Set-ProcessState can be used to either Start or Stop a particular application / process, simply by specifying the -Action parameter
+
+PARAMETER processName
+
+    Name of process to check for, start up, or stop
+
+PARAMETER Action
+
+    Specify whether to start processName, or to Stop it.
+
+PARAMETER ListAvailable
+
+    Enumerate $knownPaths hash table
+
+EXAMPLE
+
+    Get-Process C:\> Set-ProcessState -ProcessName iexplore -Action Stop
+
+    Stop all running instances of Internet Explorer
+
+EXAMPLE
+
+    Get-Process C:\> Set-ProcessState -ProcessName Firefox -Action Start
+
+    Effectively equivalent to Start-Process Firefox browser, when the path to Firefox.exe is defined in your Sperry JSON file.

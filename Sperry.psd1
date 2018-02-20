@@ -68,7 +68,7 @@ ScriptsToProcess = @('AdminConsole.ps1', 'ProcessState.ps1', 'ClearCookies.ps1',
 NestedModules = @('PrinterFunctions.psm1')
 
 # Functions to export from this module
-FunctionsToExport = @('Clear-IECookie', 'Connect-WiFi', 'Disconnect-WiFi', 'Dismount-Path', 'Get-IECookie', 'Get-IPAddress',, 'Get-NetConnStatus', 'Get-Printer', 'Get-ProcessByUser', 'Get-PSFSDrive', 'Get-ServiceGroup', 'Get-WiFi', 'Import-Settings', 'Mount-Path', 'Open-AdminConsole', 'Open-Browser', 'Open-UAC', 'Redo-DHCP', 'Set-NetConnStatus', 'Set-Printer', 'Set-ProcessState', 'Set-ServiceGroup', 'Set-Workplace', 'Show-DesktopDocuments', 'Show-Settings', 'Test-LocalAdmin', 'Test-ProcessState')
+FunctionsToExport = @('Clear-IECookie', 'Connect-WiFi', 'Disconnect-WiFi', 'Dismount-Path', 'Get-IECookie', 'Get-IPAddress', 'Get-NetConnStatus', 'Get-Printer', 'Get-ProcessByUser', 'Get-PSFSDrive', 'Get-ServiceGroup', 'Get-WiFi', 'Import-Settings', 'Mount-Path', 'Open-AdminConsole', 'Open-Browser', 'Open-UAC', 'Redo-DHCP', 'Set-NetConnStatus', 'Set-Printer', 'Set-ProcessState', 'Set-ServiceGroup', 'Set-Workplace', 'Show-DesktopDocuments', 'Show-Settings', 'Test-LocalAdmin', 'Test-ProcessState')
 
 # Cmdlets to export from this module
 # CmdletsToExport = '*'

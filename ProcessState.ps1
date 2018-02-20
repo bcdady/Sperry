@@ -47,7 +47,7 @@ function Set-ProcessState {
     .SYNOPSIS
         A helper function for streamlining start-process and stop-process cmdlet interactions for predefined executable file paths and their arguments / parameters.
     .DESCRIPTION
-        Using the ProcessName parameter, and the internally defined $knownPaths hash table, Set-ProcessState can be used to either Start or Stop a particular application / process, simply by specificying the -Action parameter
+        Using the ProcessName parameter, and the internally defined $knownPaths hash table, Set-ProcessState can be used to either Start or Stop a particular application / process, simply by specifying the -Action parameter
     .PARAMETER processName
         Name of process to check for, start up, or stop
     .PARAMETER Action
@@ -59,7 +59,7 @@ function Set-ProcessState {
         Stop all running instances of Internet Explorer
     .EXAMPLE
         Get-Process C:\> Set-ProcessState -ProcessName Firefox -Action Start
-        Effectively equivaluent to Start-Process Firefox browser
+        Effectively equivalent to Start-Process Firefox browser, when the path to Firefox.exe is defined in your Sperry JSON file.
     .NOTES
         NAME        :  Set-ProcessState
         VERSION     :  2.1.2

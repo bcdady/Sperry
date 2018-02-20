@@ -1,5 +1,5 @@
 ﻿
-function global:Test-LocalAdmin {
+function Test-LocalAdmin {
     <#
         .SYNOPSIS
             Test if you have Admin Permissions; returns simple boolean result
