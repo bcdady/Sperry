@@ -1,4 +1,4 @@
-#!/usr/local/bin/powershell
+#!/usr/local/bin/pwsh
 #Requires -Version 3 -Module PSLogger
 
 <#
@@ -494,7 +494,7 @@ function Set-Workplace {
   Write-Log -Message 'Checking UserAccountControl level' -Function $MyInvocation.MyCommand.Name
   Open-UAC
 
-  Write-Log -Message ('Loading settings for Workplace {0} as defined in {1}.' -f $zone, $SettingsFileName) -Function $MyInvocation.MyCommand.Name
+  Write-Log -Message ('Loading settings for Workplace {0} as defined in {1}.' -f $zone, $SettingsFileName) -Function $MyInvocation.MyCommand.Name -Verbose
   $ZoneSettings = $MySettings.Workplace | Where-Object -FilterScript {$PSItem.Name -eq $zone}
 
   if (-not ($ZoneSettings.function_before)) {
