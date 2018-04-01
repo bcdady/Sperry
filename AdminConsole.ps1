@@ -31,14 +31,12 @@ function Open-AdminConsole {
             Request-AdminHost
             sudo
     #>
-    # Aliases added below
-    # Param( [Switch]$noprofile )
     [cmdletbinding()]
     param (
         [Parameter(Position=0)]
-        [Alias('Automatic','Silent','NonInteractive')]
+        [Alias('Interactive')]
         [Switch]
-        $NoProfile = $true,
+        $LoadProfile,
 
         [Parameter(Position=1)]
         [Alias('script','ScriptBlock')]
@@ -46,17 +44,24 @@ function Open-AdminConsole {
         $Command
     )
 
-    Write-Debug -Message "`$Variable:NoProfile : $Variable:NoProfile"
+    Write-Debug -Message "`$Variable:LoadProfile : $Variable:LoadProfile"
     Write-Debug -Message "`$Command is $Command"
-    if ($Variable:NoProfile) 
+    if ($Global:PSEdition -eq 'Desktop') {
+        $Shell = 'powershell.exe'
+    } else {
+        $Shell = 'pwsh.exe'
+    }
+    $ShellPath = Join-Path -Path $PSHOME -ChildPath $Shell
+
+    Write-Debug -Message "`$Variable:LoadProfile : $Variable:LoadProfile"
+    Write-Debug -Message "`$Command is $Command"
+    if ($Variable:LoadProfile) 
 # can't add Command handling until including some kind of validation / safety checking
 #    if ($Variable:Command)
     {
-        Write-Debug -Message "`$Variable:NoProfile : $Variable:NoProfile"
-        Write-Debug -Message "`$Command is $Command"
-        $return = Start-Process -FilePath "$PSHOME\powershell.exe" -ArgumentList "-NoProfile $Command" -Verb RunAs -WindowStyle Normal
+        $return = Start-Process -FilePath "$ShellPath" -ArgumentList "-Command & {$Command}" -Verb RunAs -WindowStyle Normal
     } else {
-        $return = Start-Process -FilePath "$PSHOME\powershell.exe" -ArgumentList "-Command & {$Command}" -Verb RunAs -WindowStyle Normal
+        $return = Start-Process -FilePath "$ShellPath" -ArgumentList "-NoProfile -Command & {$Command}" -Verb RunAs -WindowStyle Normal
     }
     Return $return
 }

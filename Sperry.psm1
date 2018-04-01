@@ -1,4 +1,4 @@
-#!/usr/local/bin/powershell
+#!/usr/local/bin/pwsh
 #Requires -Version 3 -Module PSLogger
 
 <#
@@ -159,7 +159,7 @@ function Mount-Path {
         Import-Settings
     }
     # $AllDrives = 1 (true) means map all drives; 0 (false) means only map H: and S:
-    Write-Log -Message 'Mapping Network Drives' -Function $MyInvocation.MyCommand.Name -Verbose
+    Write-Log -Message 'Mapping Network Drives' -Function $MyInvocation.MyCommand.Name
     if (Test-LocalAdmin) { Write-Log -Message 'Mapping drives with a different account, may result in them NOT appearing properly in Explorer' -Function $MyInvocation.MyCommand.Name }
 
     # Read in UNC path / drive letter mappings from sperry.json : Sperry.uncPaths
@@ -177,7 +177,7 @@ function Mount-Path {
             Write-Log -Message ('Drive letter {0} already in use' -f $DriveName) -Function 'Mount-Path'
         } elseif (-not (Test-Path -Path $PathRoot)) {
             # Write-Warning -Message ('Path {0} was not found; unable to map to drive letter {1}' -f $PathRoot, $DriveName)            
-            Write-Log -Message ('Path {0} was not found; unable to map to drive letter {1}' -f $PathRoot, $DriveName) -Function 'Mount-Path' -Verbose
+            Write-Log -Message ('Path {0} was not found; unable to map to drive letter {1}' -f $PathRoot, $DriveName) -Function 'Mount-Path'
         } else {
             Write-Log -Message ('New-PSDrive {0}: {1}' -f $DriveName, $PathRoot) -Function 'Mount-Path'
             Write-Debug -Message (' New-PSDrive -Persist -Name {0} -Root {1} -PSProvider FileSystem -scope Global' -f $DriveName, $PathRoot)
@@ -221,7 +221,7 @@ function Get-WiFi {
         .\> Get-WiFi
     #>
     Show-Progress -msgAction 'Start' -msgSource $MyInvocation.MyCommand.Name # Log start time stamp
-    Write-Log -Message 'netsh.exe wlan show networks' -Function $MyInvocation.MyCommand.Name -Verbose
+    Write-Log -Message 'netsh.exe wlan show networks' -Function $MyInvocation.MyCommand.Name
     Invoke-Command -ScriptBlock {& "$env:windir\system32\netsh.exe" wlan show networks}
     Show-Progress -msgAction 'Stop' -msgSource $MyInvocation.MyCommand.Name # Log end time stamp
 } # end function Get-WiFi
@@ -296,7 +296,7 @@ function Connect-WiFi {
         if ($return -eq 0) {
           Write-Log -Message 'Adapter Enabled' -Function $MyInvocation.MyCommand.Name
         } else {
-          Write-Log -Message ('A fatal error was encountered trying to enable Network Adapter {0} (Device {1})' -f $PSItem.Name,$PSItem.DeviceID) -Verbose
+          Write-Log -Message ('A fatal error was encountered trying to enable Network Adapter {0} (Device {1})' -f $PSItem.Name,$PSItem.DeviceID)
         }
       }
       Start-Sleep -Seconds 1
@@ -534,8 +534,8 @@ function Set-Workplace {
   Set-ItemProperty -Path 'HKCU:\Software\Policies\Microsoft\Internet Explorer\Main' -Name 'Start Page' -Value $ZoneSettings.IEHomePage -force -ErrorAction Ignore
 
     # Set preferred / defined default browser
-    Write-Log -Message 'Updating default browser via registry edit' -Function $MyInvocation.MyCommand.Name -Verbose
-    Write-Log -Message ('Setting URL Progid to {0}' -f $ZoneSettings.BrowserProgid) -Function $MyInvocation.MyCommand.Name -Verbose
+    Write-Log -Message 'Updating default browser via registry edit' -Function $MyInvocation.MyCommand.Name
+    Write-Log -Message ('Setting URL Progid to {0}' -f $ZoneSettings.BrowserProgid) -Function $MyInvocation.MyCommand.Name
     @('http','https') | ForEach {
         $Private:URL = ('HKCU:\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\{0}\UserChoice' -f $PSItem)
         # In case the reg key does not yet exist, we must first create it, as New-ItemProperty can not make a new reg key item prior to setting a property of the item
@@ -562,7 +562,7 @@ function Set-Workplace {
 
 
   $ZoneSettings.function_after | ForEach-Object -Process {
-    Write-Log -Message ('{0}' -f $PSItem.Message) -Function $PSItem.Name -Verbose
+    Write-Log -Message ('{0}' -f $PSItem.Message) -Function $PSItem.Name
     Invoke-Expression -Command $PSItem.Name
     Start-Sleep -Milliseconds 777
   }
@@ -571,7 +571,7 @@ function Set-Workplace {
     Write-Log -Message '$ZoneSettings.Printer preference was not found.' -Function $MyInvocation.MyCommand.Name
   } else {
     $ZoneSettings.Printer | ForEach-Object -Process {
-      Write-Log -Message ('Setting default printer: {0}' -f $ZoneSettings.Printer) -Function $MyInvocation.MyCommand.Name -Verbose
+      Write-Log -Message ('Setting default printer: {0}' -f $ZoneSettings.Printer) -Function $MyInvocation.MyCommand.Name
       Set-Printer -printerShareName $ZoneSettings.Printer
       Start-Sleep -Milliseconds 333
     }
