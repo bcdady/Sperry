@@ -1,5 +1,5 @@
 ﻿
-function Test-LocalAdmin {
+Function Test-LocalAdmin {
     <#
         .SYNOPSIS
             Test if you have Admin Permissions; returns simple boolean result
@@ -14,7 +14,39 @@ function Test-LocalAdmin {
     }
 } # end function Test-LocalAdmin      
 
-function Open-AdminConsole {
+Function Open-AdminConsole {
+ 	[cmdletbinding()]
+ 	param (
+		[Parameter(Position=0)]
+		[Alias('Interactive')]
+		[Switch]
+		$LoadProfile,
+		[Parameter(Position=1,
+			Mandatory,
+			HelpMessage='Specify the command to run'
+		)]
+		[Alias('script','ScriptBlock')]
+		[Object]
+		$Command
+	)
+
+    if ($Global:PSEdition -eq 'Core') {
+        $Shell = 'pwsh.exe'
+    } else {
+        $Shell = 'powershell.exe'
+    }
+    $ShellPath = Join-Path -Path $PSHOME -ChildPath $Shell
+
+    Write-Debug -Message ('$Variable:LoadProfile is {0}' -f $Variable:LoadProfile)
+    Write-Debug -Message ('$Command is {0}' -f $Command)
+    # Can't add Command handling until including some kind of validation / safety checking
+    # if ($Variable:Command)
+    if ($Variable:LoadProfile) {
+        $return = Start-Process -FilePath "$ShellPath" -ArgumentList "-Command & {$Command}" -Verb RunAs -WindowStyle Normal
+    } else {
+        $return = Start-Process -FilePath "$ShellPath" -ArgumentList "-NoProfile -Command & {$Command}" -Verb RunAs -WindowStyle Normal
+    }
+    Return $return
     <#
         .SYNOPSIS
             Launch a new console window from the command line, with optional -NoProfile support
@@ -31,39 +63,6 @@ function Open-AdminConsole {
             Request-AdminHost
             sudo
     #>
-    [cmdletbinding()]
-    param (
-        [Parameter(Position=0)]
-        [Alias('Interactive')]
-        [Switch]
-        $LoadProfile,
-
-        [Parameter(Position=1)]
-        [Alias('script','ScriptBlock')]
-        [object]
-        $Command
-    )
-
-    Write-Debug -Message "`$Variable:LoadProfile : $Variable:LoadProfile"
-    Write-Debug -Message "`$Command is $Command"
-    if ($Global:PSEdition -eq 'Desktop') {
-        $Shell = 'powershell.exe'
-    } else {
-        $Shell = 'pwsh.exe'
-    }
-    $ShellPath = Join-Path -Path $PSHOME -ChildPath $Shell
-
-    Write-Debug -Message "`$Variable:LoadProfile : $Variable:LoadProfile"
-    Write-Debug -Message "`$Command is $Command"
-    if ($Variable:LoadProfile) 
-# can't add Command handling until including some kind of validation / safety checking
-#    if ($Variable:Command)
-    {
-        $return = Start-Process -FilePath "$ShellPath" -ArgumentList "-Command & {$Command}" -Verb RunAs -WindowStyle Normal
-    } else {
-        $return = Start-Process -FilePath "$ShellPath" -ArgumentList "-NoProfile -Command & {$Command}" -Verb RunAs -WindowStyle Normal
-    }
-    Return $return
 }
 
 New-Alias -Name Open-AdminHost -Value Open-AdminConsole -ErrorAction Ignore

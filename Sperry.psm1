@@ -494,7 +494,7 @@ function Set-Workplace {
   Write-Log -Message 'Checking UserAccountControl level' -Function $MyInvocation.MyCommand.Name
   Open-UAC
 
-  Write-Log -Message ('Loading settings for Workplace {0} as defined in {1}.' -f $zone, $SettingsFileName) -Function $MyInvocation.MyCommand.Name -Verbose
+  Write-Log -Message ('Loading settings for Workplace {0} as defined in {1}.' -f $zone, $SettingsFileName) -Function $MyInvocation.MyCommand.Name
   $ZoneSettings = $MySettings.Workplace | Where-Object -FilterScript {$PSItem.Name -eq $zone}
 
   if (-not ($ZoneSettings.function_before)) {
