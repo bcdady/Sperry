@@ -1,1 +1,188 @@
-{"About":[{"name":"Sperry PowerShell Module","type":"PowerShell","program":"Sperry.psm1","description":"User customization for PowerShell Sperry module","version":"1.0.0","updated":"11-1-2017","notes":"consolidated information to new 'about' category"}],"XenApp":[{"Name":"cmd","QLaunch":"[FarmName]:Command Line"},{"Name":"Excel","QLaunch":"[FarmName]:Microsoft Excel 2010"},{"Name":"IE","QLaunch":"[FarmName]:Internet Explorer"},{"Name":"OneNote","QLaunch":"[FarmName]:Microsoft OneNote 2010"},{"Name":"Outlook","QLaunch":"[FarmName]:Microsoft Outlook 2010"},{"Name":"PowerPoint","QLaunch":"[FarmName]:Microsoft Powerpoint 2010"},{"Name":"Word","QLaunch":"[FarmName]:Microsoft Word 2010"},{"Name":"Visio","QLaunch":"[FarmName]:Microsoft Visio 2013"}],"KnownProcess":[{"Name":"Chrome","Path":"${env:ProgramFiles(x86)}\\Google\\Chrome\\Application\\chrome.exe"},{"Name":"Code","Path":"$env:ProgramFiles\\Microsoft VS Code\\code.exe"},{"Name":"CodeInsider","Path":"$env:ProgramFiles\\Microsoft VS Code Insiders\\bin\\code-insiders.cmd"},{"Name":"GitHub","Path":"$env:APPDATA\\Microsoft\\Windows\\Start Menu\\Programs\\GitHub, Inc\\GitHub.appref-ms"},{"Name":"procexp","Path":"$env:USERPROFILE\\Downloads\\Sysinternals\\procexp.exe"},{"Name":"volume","Path":"$env:SystemRoot\\System32\\sndvol.exe"}],"UNCPath":[{"DriveName":"H","FullPath":"\\\\SMB-FQDN\\ShareRoot$\\$env:USERNAME"}],"Workplace":[{"Name":"Remote","function_before":[{"Name":"Dismount-Path","Message":"Remove (unmount) all network (UNC) drive letters"},{"Name":"Connect-WiFi -SSID MyNetworkName","Message":"Connect to specified wireless network"},{"Name":"Clear-IECookie","Args":".*","Message":"Clear all IE browser cookies"}],"ServiceGroup":[{"Name":"ServiceNameWildCard*","Status":"Stopped","Message":"Stop all running services matching the string in Name"}],"IEHomePage":"https://personal.BrowserHomePage.url","BrowserProgid":"ChromeHTML","ProcessState":[{"Name":"Chrome","Action":"Start","Message":"Start Chrome browser"},{"Name":"CodeInsider","Action":"Start","Message":"Start VS-Code Insider"}],"function_after":[]},{"Name":"Office","function_before":[{"Name":"Set-NetConnStatus","Message":"Ensure wired network adapter is enabled"},{"Name":"Mount-Path","Message":"Map (mount) all defined network drive letters (as specified under UNCPath)"}],"ServiceGroup":[{"Name":"ServiceNameWildCard*","Status":"Stopped","Message":"Stop all running services matching the string in Name"}],"IEHomePage":"https://corporate.BrowserHomePage.url","BrowserProgid":"IE.HTTPS","function_after":[{"Name":"Start-CitrixSession","Message":"Start Citrix Session"}]}]}
+{
+    "About": {
+            "name": "Sperry PowerShell Module",
+            "type": "PowerShell",
+            "program": "Sperry.psm1",
+            "description": "User customization for PowerShell Sperry module",
+            "version": "1.0.2",
+            "updated": "5-9-2018",
+            "notes": "consolidated information to new 'about' category"
+        },
+    "XenApp": [
+        {
+            "Name": "cmd",
+            "QLaunch": "[FarmName]:Command Line"
+        },
+        {
+            "Name": "Excel",
+            "QLaunch": "[FarmName]:Microsoft Excel 2010"
+        },
+        {
+            "Name": "IE",
+            "QLaunch": "[FarmName]:Internet Explorer"
+        },
+        {
+            "Name": "OneNote",
+            "QLaunch": "[FarmName]:Microsoft OneNote 2010"
+        },
+        {
+            "Name": "Outlook",
+            "QLaunch": "[FarmName]:Microsoft Outlook 2010"
+        },
+        {
+            "Name": "PowerPoint",
+            "QLaunch": "[FarmName]:Microsoft PowerPoint 2010"
+        },
+        {
+            "Name": "Word",
+            "QLaunch": "[FarmName]:Microsoft Word 2010"
+        },
+        {
+            "Name": "Visio",
+            "QLaunch": "[FarmName]:Microsoft Visio 2013"
+        }
+    ],
+    "KnownProcess": [
+        {
+            "Name": "Chrome",
+            "Path": "${env:ProgramFiles(x86)}\\Google\\Chrome\\Application\\chrome.exe"
+        },
+        {
+            "Name": "Code",
+            "Path": "$env:ProgramFiles\\Microsoft VS Code\\code.exe"
+        },
+        {
+            "Name": "GitHub",
+            "Path": "$env:APPDATA\\Microsoft\\Windows\\Start Menu\\Programs\\GitHub, Inc\\GitHub.appref-ms"
+        },
+        {
+            "Name": "iexplore",
+            "Path": "$env:ProgramFiles\\Internet Explorer\\iexplore.exe"
+        },
+        {
+            "Name": "OneNote",
+            "Path": "$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Microsoft Office\\Microsoft OneNote 2010.lnk"
+        },
+        {
+            "Name": "Citrix",
+            "Path": "$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Citrix\\Receiver.lnk"
+        },
+        {
+            "Name": "receiver",
+            "Path": "$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Citrix\\Receiver.lnk"
+        },
+        {
+            "Name": "procexp",
+            "Path": "$env:USERPROFILE\\Downloads\\Sysinternals\\procexp.exe"
+        }
+    ],
+    "UNCPath": [
+        {
+            "Order": "1",
+            "DriveName": "H",
+            "FullPath": "\\\\SMB-FQDN\\ShareRoot$\\$env:USERNAME"
+        }
+    ],
+    "WebSites": [
+        {
+            "Name": "AboutMe",
+            "URL": "https://about.me/bryandady/"
+        },
+        {
+            "Name": "bryan.dady.us",
+            "URL": "https://bryan.dady.us/"
+        },
+        {
+            "Name": "GitHub",
+            "URL": "hthttps://github.com/bcdady"
+        },
+        {
+            "Name": "LinkedIn",
+            "URL": "http://www.linkedin.com/in/bryandady"
+        },
+        {
+            "Name": "Twitter",
+            "URL": "https://www.twitter.com/bcdady"
+        }
+    ],
+    "Workplace" :{
+        "Remote" :[
+            {
+                "Name": "Remote",
+                "function_before": [
+                    {
+                        "Order": "1",
+                        "Name": "Dismount-Path",
+                        "Message": "Remove (unmount) all network (UNC) drive letters"
+                    },
+                    {
+                        "Order": "2",
+	                    "Name": "Connect-WiFi -SSID MyNetworkName",
+	                    "Message": "Connect to specified wireless network"
+	                },
+	                {
+                        "Order": "3",
+	                    "Name": "Clear-IECookie",
+	                    "Args": ".*",
+	                    "Message": "Clear all IE browser cookies"
+	                }
+	            ],
+	            "ServiceGroup": [
+	                {
+                    	"Order": "1",
+	                    "Name": "ServiceNameWildCard*",
+	                    "Status": "Stopped",
+	                    "Message": "Stop all running services matching the string in Name"
+	                }
+	            ],
+	            "IEHomePage": "https://personal.BrowserHomePage.url",
+				"SSID": "My_WiFi_Name",
+	            "BrowserProgid": "ChromeHTML",
+	            "ProcessState": [
+	                {
+                        "Order": "1",
+	                    "Name": "Chrome",
+	                    "Action": "Start",
+	                    "Message": "Start Chrome browser"
+	                }
+	            ],
+	            "function_after": [],
+                "Printer": "Default_Printer_ShareName"
+            }
+        ],
+        "Office" :[
+            {
+                "Name": "Office",
+                "function_before" :[
+                    {
+                        "Order": "1",
+	                    "Name": "Set-NetConnStatus",
+	                    "Message": "Ensure wired network adapter is enabled"
+	                },
+	                {
+                        "Order": "2",
+	                    "Name": "Mount-Path",
+	                    "Message": "Map (mount) all defined network drive letters (as specified under UNCPath)"
+	                }
+	            ],
+	            "ServiceGroup": [
+	                {
+                        "Order": "1",
+                    	"Name": "ServiceNameWildCard*",
+                    	"Status": "Stopped",
+                    	"Message": "Stop all running services matching the string in Name"
+	                }
+	            ],
+	            "IEHomePage": "https://corporate.BrowserHomePage.url",
+	            "BrowserProgid": "IE.HTTPS",
+	            "function_after": [
+	                {
+	                    "Order": "1",
+	                    "Name": "Start-CitrixSession",
+	                    "Message": "Start Citrix Session"
+	                }
+	            ]
+	        }
+		]
+    }
+}

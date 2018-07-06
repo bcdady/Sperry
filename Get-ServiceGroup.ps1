@@ -49,8 +49,8 @@ function Get-ServiceGroup {
     # Calculates the cumulative status of all services matching the Name parameter
     Param(
         [Parameter(
-            Mandatory,
             Position = 0,
+            Mandatory,
             HelpMessage = 'Specify service name to match. Accepts partial names.'
         )]
         [String]
@@ -144,7 +144,8 @@ function Set-ServiceGroup {
   #>
     # Calculates the cumulative status of all services matching the Name parameter
     Param(
-        [Parameter(Position = 0,
+        [Parameter(
+			Position = 0,
             Mandatory,
             HelpMessage = 'Specify service name to match. Accepts partial names.'
         )]

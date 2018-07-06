@@ -49,7 +49,7 @@ write-output  -InputObject "`nCopying module from $PSScriptRoot to $moduleDestin
 
 try {
     Get-ChildItem $PSScriptRoot -Recurse -Exclude 'copy-module.ps1','.git*','*.md' | 
-    Copy-Item -Destination $moduleDestination\$dirName ;
+    Copy-Item -Destination $moduleDestination\$dirName
 }
 
 catch {
@@ -66,6 +66,8 @@ try {
     if (Test-Path (Join-Path -Path $moduleDestination\$dirName -ChildPath "$dirName.psd1")) {
         write-host "`n";
         Write-Host -Object " # Congratulations! Module $dirName is now ready to be imported." -BackgroundColor Blue -ForegroundColor Green; 
+        # Unblock-File -recurse to each / all new scripts / modules
+        Get-ChildItem -Path $moduleDestination -Recurse | Unblock-File;
         Write-Output -InputObject "To load the module, so you can start using it, run 'import-module -name $dirName -PassThru'`n`n";
     }
 }

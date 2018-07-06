@@ -24,9 +24,8 @@ function Get-IECookie {
         Write-Log -Message 'No URI parameter was specified, so you''ll see all cookies from an IP(v4) address' -Function Sperry
     }
 
-    $cookieMatches = @(Get-ChildItem -File -Path ([system.environment]::getfolderpath('cookies')) -Recurse | `
-        Select-String -Pattern "$cookieURI" | `
-            Select-Object -Property FileName, Line, Path)
+    $cookieMatches = @(Get-ChildItem -File -Path ([system.environment]::GetFolderPath('cookies')) -Recurse | `
+        Select-String -Pattern "$cookieURI" | Select-Object -Property FileName, Line, Path)
 
     # Log end timestamp
     Show-Progress -msgAction Stop -msgSource Sperry

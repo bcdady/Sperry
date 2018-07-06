@@ -98,7 +98,7 @@ function Set-ProcessState {
     Import-Settings
     $script:knownPaths = @{}
     try {
-        $MySettings.KnownProcess | out-null
+        Select-Object -InputObject $MySettings -ExpandProperty About -ErrorAction Ignore
     }
     catch {
         throw $Error
@@ -112,8 +112,7 @@ function Set-ProcessState {
     # Predefine 'prompt-list' to control which processes invoke user approval and which ones terminate silently
     $script:askTerminate = @('receiver', 'outlook', 'iexplore', 'brave', 'code', 'chrome', 'firefox')
 
-    if ($PSBoundParameters.ContainsKey('ListAvailable'))
-    {
+    if ($PSBoundParameters.ContainsKey('ListAvailable')) {
         Write-Log -Message "Enumerating all available `$XenApps Keys" -Function ProcessState
         $script:knownPaths | Sort-Object -Property Name # | Format-Table -AutoSize
     } else {
@@ -309,11 +308,9 @@ function Test-ProcessState {
         [ValidateNotNullOrEmpty()]
         [String[]]
         $ProcessName,
-
         [Parameter(Position = 1)]
         [switch]
         $Wait,
-
         [Parameter(Position = 2)]
         [Alias('Delay')]
         [int16]
@@ -377,7 +374,7 @@ function Test-ProcessState {
                 # Similar to: Get-Process -ProcessName *7z* | Select-Object -Property Name,Path | Format-Table -AutoSize
                 $script:process | ForEach-Object -Process {
                     #'Optimize New-Object invocation, based on Don Jones' recommendation: https://technet.microsoft.com/en-us/magazine/hh750381.aspx
-                    $script:properties = @{
+                    $script:properties = [ordered]@{
                         'Name'=$PSItem.Name
                         'Path'=$PSItem.Path
                         'Status'='Running'
