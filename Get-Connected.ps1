@@ -1,5 +1,5 @@
+#!/usr/local/bin/pwsh
 #requires -Version 3
-
 [CmdletBinding()]
 Param ()
 
