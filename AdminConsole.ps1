@@ -15,6 +15,7 @@ Function Test-LocalAdmin {
 } # end function Test-LocalAdmin
 
 Function Open-AdminConsole {
+#Requires -PSEdition Core
  	[cmdletbinding()]
  	param (
 		[Parameter(Position=0)]
